@@ -1,0 +1,7 @@
+[project]
+project_id = "gvwdrbrepbpmhjckdcyq"
+
+[functions.emergency-call]
+# The function authenticates browser requests itself and must also accept
+# unauthenticated Twilio status callbacks.
+verify_jwt = false
