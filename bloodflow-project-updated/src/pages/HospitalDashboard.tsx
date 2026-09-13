@@ -18,7 +18,7 @@ import {
   AlertCircle,
   Activity,
   ArrowUpRight,
-  Radio,
+  MessageSquare,
   Award,
 } from 'lucide-react';
 import { DashboardLayout, PageHeader, StatCard } from '@/components/DashboardLayout';
@@ -1237,17 +1237,21 @@ function HospitalSettings({
           </div>
         </div>
       </Card>
-      <TelegramAlertsConfig />
+      <TwilioAlertsConfig />
     </>
   );
 }
 
-function TelegramAlertsConfig() {
+
+function TwilioAlertsConfig() {
   const [testing, setTesting] = useState(false);
+  const [testMode, setTestMode] = useState<'call' | 'sms'>('call');
+  const [toNumber, setToNumber] = useState('');
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
 
-  async function handleSendTest() {
+  async function handleSendTest(mode: 'call' | 'sms') {
     setTesting(true);
+    setTestMode(mode);
     setTestResult(null);
     try {
       const { data: sessionData } = await supabase.auth.getSession();
@@ -1257,17 +1261,20 @@ function TelegramAlertsConfig() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${sessionData.session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY}`,
         },
-        body: JSON.stringify({ testTelegram: true }),
+        body: JSON.stringify({ testTwilio: true, mode, toNumber: toNumber.trim() || undefined }),
       });
       const res = await response.json().catch(() => ({}));
       if (response.ok && res.success) {
-        setTestResult({ success: true, message: 'Test alert delivered! Check your Telegram app.' });
+        setTestResult({
+          success: true,
+          message: res.message || (mode === 'call' ? 'Voice Call initiated! Check your phone.' : 'Test SMS sent! Check your phone.'),
+        });
       } else {
         setTestResult({
           success: false,
           message:
             res.error ||
-            'Could not deliver test alert. Ensure TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID are set in Supabase secrets.',
+            'Twilio test failed. On Twilio free trial accounts, recipient numbers must be added to "Verified Caller IDs" in your Twilio Console.',
         });
       }
     } catch {
@@ -1284,42 +1291,74 @@ function TelegramAlertsConfig() {
     <Card className="mt-6 max-w-2xl p-6 sm:p-8">
       <div className="mb-4">
         <div className="flex items-center gap-2">
-          <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-sky-500 font-bold text-white text-[11px] shadow-xs">
-            TG
+          <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-red-500 font-bold text-white text-[11px] shadow-xs">
+            TW
           </span>
-          <h3 className="text-base font-bold text-slate-900">Telegram Emergency Alert System</h3>
+          <h3 className="text-base font-bold text-slate-900">Twilio Automated Voice Call Dispatch</h3>
           <Badge variant="green" dot>
-            100% Free
+            Free Trial
           </Badge>
         </div>
         <p className="mt-1 text-xs text-slate-500">
-          Get real-time emergency blood requests on your phone with audible ring notifications and direct click-to-call.
+          Automatically dial hospital phone numbers and deliver spoken voice alerts during blood emergencies. Uses Twilio free trial credits — direct API call from Edge Function (100% free, no paid Supabase connectors).
         </p>
       </div>
 
-      <div className="mb-4 rounded-xl border border-sky-100 bg-sky-50/80 p-4 text-xs text-sky-950 space-y-2">
-        <p className="font-bold text-sky-900">How to activate in 1 minute (Zero Carrier Fees):</p>
-        <ol className="list-decimal list-inside space-y-1.5 text-sky-800 leading-relaxed">
+      {/* Setup instructions */}
+      <div className="mb-4 rounded-xl border border-red-100 bg-red-50/80 p-4 text-xs text-red-950 space-y-2">
+        <p className="font-bold text-red-900">How to set up Twilio Voice Calls (Free Trial):</p>
+        <ol className="list-decimal list-inside space-y-1.5 text-red-800 leading-relaxed">
           <li>
-            Open Telegram on your phone and search for <b>@BotFather</b>.
+            Go to <b>twilio.com</b> and create a free trial account — includes <b>~$15.50 free trial credit</b>.
           </li>
           <li>
-            Send <code className="rounded bg-white/90 px-1 py-0.5 font-mono text-sky-950">/newbot</code> and follow
-            prompts to copy your <b>Bot Token</b>.
+            In your Twilio Console, copy your <b>Account SID</b> and <b>Auth Token</b>.
           </li>
           <li>
-            Search for <b>@userinfobot</b> on Telegram and tap Start to get your <b>Chat ID</b>.
+            Get a free Twilio phone number (e.g. <code className="rounded bg-white/90 px-1 py-0.5 font-mono text-red-950">+1XXXXXXXXXX</code>).
           </li>
           <li>
-            In Supabase Project Secrets, set: <code className="rounded bg-white/90 px-1 py-0.5 font-mono text-sky-950">TELEGRAM_BOT_TOKEN</code> and <code className="rounded bg-white/90 px-1 py-0.5 font-mono text-sky-950">TELEGRAM_CHAT_ID</code>.
+            <b>Crucial for Free Trial:</b> Go to <b>Twilio Console → Phone Numbers → Verified Caller IDs</b> and add your personal phone number (e.g. <code className="rounded bg-white/90 px-1 py-0.5 font-mono text-red-950">+91XXXXXXXXXX</code>).
+          </li>
+          <li>
+            In <b>Supabase → Project Settings → Edge Functions → Secrets</b>, set:
+            <ul className="mt-1 ml-4 space-y-0.5 list-disc">
+              <li><code className="rounded bg-white/90 px-1 py-0.5 font-mono text-red-950">TWILIO_ACCOUNT_SID</code></li>
+              <li><code className="rounded bg-white/90 px-1 py-0.5 font-mono text-red-950">TWILIO_AUTH_TOKEN</code></li>
+              <li><code className="rounded bg-white/90 px-1 py-0.5 font-mono text-red-950">TWILIO_FROM_NUMBER</code> (your Twilio number)</li>
+              <li><code className="rounded bg-white/90 px-1 py-0.5 font-mono text-red-950">TWILIO_TEST_TO_NUMBER</code> (your verified phone number for test calls)</li>
+            </ul>
           </li>
         </ol>
       </div>
 
-      <div className="flex items-center gap-3">
-        <Button size="sm" variant="outline" onClick={handleSendTest} disabled={testing} loading={testing}>
-          <Radio className="h-3.5 w-3.5 text-sky-600" /> Send Test Telegram Alert
-        </Button>
+      {/* Test input + buttons */}
+      <div className="flex flex-col gap-3">
+        <Input
+          label="Test Phone Number"
+          value={toNumber}
+          onChange={setToNumber}
+          placeholder="+91XXXXXXXXXX (leave blank to use TWILIO_TEST_TO_NUMBER secret)"
+        />
+        <div className="flex items-center gap-3">
+          <Button
+            size="sm"
+            onClick={() => handleSendTest('call')}
+            disabled={testing}
+            loading={testing && testMode === 'call'}
+          >
+            <PhoneCall className="h-3.5 w-3.5 mr-1" /> Make Test Voice Call
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => handleSendTest('sms')}
+            disabled={testing}
+            loading={testing && testMode === 'sms'}
+          >
+            <MessageSquare className="h-3.5 w-3.5 text-red-600 mr-1" /> Send Test SMS
+          </Button>
+        </div>
       </div>
 
       {testResult && (
@@ -1328,13 +1367,13 @@ function TelegramAlertsConfig() {
             'mt-3 rounded-xl p-3 text-xs flex items-start gap-2',
             testResult.success
               ? 'border border-emerald-200 bg-emerald-50 text-emerald-800'
-              : 'border border-emergency-200 bg-emergency-50 text-emergency-800',
+              : 'border border-red-200 bg-red-50 text-red-800',
           )}
         >
           {testResult.success ? (
             <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
           ) : (
-            <AlertCircle className="h-4 w-4 text-emergency-600 shrink-0 mt-0.5" />
+            <AlertCircle className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
           )}
           <span>{testResult.message}</span>
         </div>
@@ -1342,5 +1381,3 @@ function TelegramAlertsConfig() {
     </Card>
   );
 }
-
-

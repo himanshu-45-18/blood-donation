@@ -22,6 +22,16 @@ function jsonResponse(body: Record<string, unknown>, status = 200): Response {
   });
 }
 
+function normalizeFromPhoneNumber(value: unknown): string | null {
+  const raw = String(value ?? "").trim();
+  if (!raw) return null;
+  if (raw.startsWith("+")) return `+${raw.replace(/\D/g, "")}`;
+  const digits = raw.replace(/\D/g, "");
+  if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
+  if (digits.length === 10) return `+1${digits}`;
+  return `+${digits}`;
+}
+
 function normalizePhoneNumber(value: unknown): string | null {
   const raw = String(value ?? "").trim();
   if (!raw) return null;
@@ -44,6 +54,102 @@ async function isValidTwilioSignature(req: Request, authToken: string, body: Rec
   return signature === btoa(String.fromCharCode(...new Uint8Array(digest)));
 }
 
+/**
+ * Make an automated Voice Call via Twilio REST API using standard TwiML Url parameter.
+ * 100% compliant with Twilio Free Trial accounts.
+ */
+async function makeTwilioCall(
+  accountSid: string,
+  authToken: string,
+  from: string,
+  to: string,
+  url: string,
+): Promise<{ ok: boolean; sid?: string; error?: string }> {
+  try {
+    const params = new URLSearchParams();
+    params.append("To", to);
+    params.append("From", from);
+    params.append("Url", url);
+    const baseUrl = Deno.env.get("TWILIO_BASE_URL") || "https://api.twilio.com";
+    const res = await fetch(`${baseUrl}/2010-04-01/Accounts/${accountSid}/Calls.json`, {
+      method: "POST",
+      headers: {
+        Authorization: "Basic " + btoa(`${accountSid}:${authToken}`),
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: params.toString(),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) return { ok: true, sid: data.sid };
+    return {
+      ok: false,
+      error: `Twilio Error ${data.code || res.status}: ${data.message || data.detail || "Call failed"} [From: ${from}, To: ${to}]`,
+    };
+  } catch (err) {
+    return { ok: false, error: String(err) };
+  }
+}
+
+/**
+ * Send an SMS via Twilio REST API directly.
+ */
+async function sendTwilioSms(
+  accountSid: string,
+  authToken: string,
+  from: string,
+  to: string,
+  body: string,
+): Promise<{ ok: boolean; sid?: string; error?: string }> {
+  try {
+    const res = await fetch(
+      `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: "Basic " + btoa(`${accountSid}:${authToken}`),
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: new URLSearchParams({ From: from, To: to, Body: body }).toString(),
+      },
+    );
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) return { ok: true, sid: data.sid };
+    return { ok: false, error: data.message || data.code || "Twilio SMS failed" };
+  } catch (err) {
+    return { ok: false, error: String(err) };
+  }
+}
+
+function getHindiBloodGroup(group: string): string {
+  const clean = String(group || "").toUpperCase().trim();
+  const map: Record<string, string> = {
+    "A+": "ए पॉजिटिव",
+    "A-": "ए नेगेटिव",
+    "B+": "बी पॉजिटिव",
+    "B-": "बी नेगेटिव",
+    "AB+": "एबी पॉजिटिव",
+    "AB-": "एबी नेगेटिव",
+    "O+": "ओ पॉजिटिव",
+    "O-": "ओ नेगेटिव",
+  };
+  return map[clean] || clean;
+}
+
+function getMarathiBloodGroup(group: string): string {
+  const clean = String(group || "").toUpperCase().trim();
+  const map: Record<string, string> = {
+    "A+": "ए पॉझिटिव्ह",
+    "A-": "ए निगेटिव्ह",
+    "B+": "बी पॉझिटिव्ह",
+    "B-": "बी निगेटिव्ह",
+    "AB+": "एबी पॉझिटिव्ह",
+    "AB-": "एबी निगेटिव्ह",
+    "O+": "ओ पॉझिटिव्ह",
+    "O-": "ओ निगेटिव्ह",
+  };
+  return map[clean] || clean;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
@@ -57,10 +163,14 @@ Deno.serve(async (req: Request) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-    // 1. Plivo Voice Answer XML Endpoint (dynamic text-to-speech)
-    if (action === "answer" || (providerParam === "plivo" && action === "answer")) {
+    // 1. Voice Call TwiML Answer XML Endpoint (Used by Twilio & Plivo)
+    if (action === "answer" || action === "test_answer" || (providerParam === "plivo" && action === "answer")) {
       const emergencyId = url.searchParams.get("emergencyId");
-      let emergencyMsg = "Emergency blood request. Please check your inventory and call the requesting hospital back immediately.";
+
+      let englishMsg = "Urgent Emergency Alert! This is an automated blood emergency call from AIIMS Hospital. We urgently require 2 units of B Positive blood. Please check your inventory immediately.";
+      let hindiMsg = "आपातकालीन चेतावनी! यह एआईआईएमएस अस्पताल से एक स्वचालित आपातकालीन कॉल है। हमें बी पॉजिटिव रक्त की दो यूनिटों की तत्काल आवश्यकता है। कृपया तुरंत अपने ब्लड बैंक स्टॉक की जांच करें।";
+      let marathiMsg = "तातडीची आणीबाणी सूचना! ही एआयआईएमएस रुग्णालयाकडून आलेली स्वयंचलित कॉल आहे. आम्हाला बी पॉझिटिव्ह रक्ताच्या दोन युनिटची तातडीने गरज आहे. कृपया तुमच्या रक्तपेढीचा साठा तपासा आणि त्वरित संपर्क साधा.";
+
       if (emergencyId && supabaseUrl && supabaseServiceKey) {
         try {
           const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -69,16 +179,48 @@ Deno.serve(async (req: Request) => {
             .select("*, requesting_hospital:hospitals(*)")
             .eq("id", emergencyId)
             .maybeSingle();
+
           if (em) {
-            emergencyMsg = `Emergency blood request for ${em.blood_group}. ${em.units_needed} units needed by ${em.requesting_hospital?.name || "a local hospital"}. Urgency: ${em.urgency}. Please check your inventory and call back.`;
+            const hospName = em.requesting_hospital?.name || "the requesting hospital";
+            const units = em.units_needed;
+            const bgEn = em.blood_group;
+            const bgHi = getHindiBloodGroup(em.blood_group);
+            const bgMr = getMarathiBloodGroup(em.blood_group);
+
+            englishMsg =
+              `Urgent Emergency Alert! This is an automated call from ${hospName}. ` +
+              `We urgently require ${units} unit${units === 1 ? "" : "s"} of ${bgEn} blood. ` +
+              `Please check your blood bank inventory and contact ${hospName} immediately.`;
+
+            hindiMsg =
+              `आपातकालीन चेतावनी! यह ${hospName} से एक स्वचालित आपातकालीन कॉल है। ` +
+              `हमें ${bgHi} रक्त की ${units} यूनिटों की तत्काल आवश्यकता है। ` +
+              `कृपया अपने ब्लड बैंक स्टॉक की जांच करें और तुरंत संपर्क करें।`;
+
+            marathiMsg =
+              `तातडीची आणीबाणी सूचना! ही ${hospName} रुग्णालयाकडून आलेली स्वयंचलित कॉल आहे. ` +
+              `आम्हाला ${bgMr} रक्ताच्या ${units} युनिटची तातडीने गरज आहे. ` +
+              `कृपया तुमच्या रक्तपेढीचा साठा तपासा आणि त्वरित संपर्क साधा.`;
           }
         } catch (_) {}
       }
-      const safeMsg = escapeXml(emergencyMsg);
-      const plivoXml = `<?xml version="1.0" encoding="UTF-8"?>\n<Response>\n  <Speak voice="WOMAN">${safeMsg}</Speak>\n  <Wait length="2"/>\n  <Speak voice="WOMAN">Repeating emergency alert. ${safeMsg}</Speak>\n</Response>`;
-      return new Response(plivoXml, {
+
+      const xmlResponse =
+        `<?xml version="1.0" encoding="UTF-8"?>\n` +
+        `<Response>\n` +
+        `  <Pause length="1"/>\n` +
+        `  <Say voice="Polly.Aditi" language="en-IN">${escapeXml(englishMsg)}</Say>\n` +
+        `  <Pause length="1.5"/>\n` +
+        `  <Say voice="Polly.Aditi" language="hi-IN">${escapeXml(hindiMsg)}</Say>\n` +
+        `  <Pause length="1.5"/>\n` +
+        `  <Say voice="Polly.Aditi" language="mr-IN">${escapeXml(marathiMsg)}</Say>\n` +
+        `  <Pause length="1"/>\n` +
+        `  <Say voice="Polly.Aditi" language="mr-IN">धन्यवाद.</Say>\n` +
+        `</Response>`;
+
+      return new Response(xmlResponse, {
         status: 200,
-        headers: { "Content-Type": "application/xml" },
+        headers: { "Content-Type": "text/xml; charset=utf-8" },
       });
     }
 
@@ -173,28 +315,61 @@ Deno.serve(async (req: Request) => {
       return jsonResponse({ received: true, provider: "twilio" });
     }
 
-    // 5. Test Telegram Endpoint
-    if (payload.testTelegram) {
-      const tgToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
-      const tgChat = payload.chatId || Deno.env.get("TELEGRAM_CHAT_ID");
-      if (!tgToken || !tgChat) {
-        return jsonResponse({ error: "TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID are required in Supabase secrets." }, 400);
+    // 5. Test Twilio Voice / SMS Endpoint
+    if (payload.testTwilio) {
+      const accountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
+      const authToken = Deno.env.get("TWILIO_AUTH_TOKEN");
+      const fromNumber = normalizeFromPhoneNumber(Deno.env.get("TWILIO_FROM_NUMBER"));
+      const toNumber = normalizePhoneNumber(payload.toNumber || Deno.env.get("TWILIO_TEST_TO_NUMBER"));
+
+      if (!accountSid || !authToken || !fromNumber) {
+        return jsonResponse(
+          {
+            error:
+              "Twilio not configured. Set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_FROM_NUMBER in Supabase project secrets.",
+          },
+          400,
+        );
       }
-      const testRes = await fetch(`https://api.telegram.org/bot${tgToken}/sendMessage`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          chat_id: tgChat,
-          text: `🚨 *BloodFlow Emergency Broadcast Test*\n\n✅ *Connection Successful!*\nYour Telegram is now configured to receive high-priority blood emergency alerts with loud ring notifications and click-to-call buttons for free.`,
-          parse_mode: "Markdown",
-          disable_notification: false,
-        }),
-      });
-      const testData = await testRes.json().catch(() => ({}));
-      if (!testRes.ok) {
-        return jsonResponse({ error: testData.description || "Telegram test failed. Verify bot token and chat ID." }, 400);
+      if (!toNumber) {
+        return jsonResponse(
+          {
+            error:
+              "No recipient phone number specified. Enter a phone number in the test box or set TWILIO_TEST_TO_NUMBER in Supabase secrets.",
+          },
+          400,
+        );
       }
-      return jsonResponse({ success: true, message: "Test alert delivered to Telegram!" });
+
+      const mode = String(payload.mode || "call").toLowerCase();
+
+      if (mode === "sms") {
+        const result = await sendTwilioSms(
+          accountSid,
+          authToken,
+          fromNumber,
+          toNumber,
+          "🚨 BloodFlow Emergency Alert Test\n\n✅ Connection Successful! Your Twilio integration is active.",
+        );
+
+        if (result.ok) {
+          return jsonResponse({ success: true, message: `Test SMS sent to ${toNumber}! (SID: ${result.sid})`, sid: result.sid });
+        }
+        return jsonResponse({ error: result.error || "SMS dispatch failed." }, 400);
+      } else {
+        // Default: VOICE CALL TEST!
+        const testAnswerUrl = `${supabaseUrl}/functions/v1/emergency-call?action=test_answer`;
+        const result = await makeTwilioCall(accountSid, authToken, fromNumber, toNumber, testAnswerUrl);
+
+        if (result.ok) {
+          return jsonResponse({
+            success: true,
+            message: `Test Voice Call placed to ${toNumber}! Your phone should ring in a few seconds. (Call SID: ${result.sid})`,
+            sid: result.sid,
+          });
+        }
+        return jsonResponse({ error: result.error || "Voice call failed." }, 400);
+      }
     }
 
     // 6. Outbound Emergency Broadcast
@@ -243,13 +418,12 @@ Deno.serve(async (req: Request) => {
       return jsonResponse({ error: "No calls to make" }, 400);
     }
 
-    // Determine configured provider (Telegram is 100% free and prioritized if token is set)
+    // Determine configured provider. Twilio Voice is prioritized if TWILIO_ACCOUNT_SID is set.
     const configuredProvider = (
       Deno.env.get("CALL_PROVIDER") ||
-      (Deno.env.get("TELEGRAM_BOT_TOKEN") ? "telegram" : "") ||
+      (Deno.env.get("TWILIO_ACCOUNT_SID") ? "twilio" : "") ||
       (Deno.env.get("PLIVO_AUTH_ID") ? "plivo" : "") ||
       (Deno.env.get("EXOTEL_ACCOUNT_SID") ? "exotel" : "") ||
-      (Deno.env.get("TWILIO_ACCOUNT_SID") ? "twilio" : "") ||
       "demo"
     ).toLowerCase();
 
@@ -257,91 +431,7 @@ Deno.serve(async (req: Request) => {
     const { data: targetHospitals } = await supabase.from("hospitals").select("id, name, phone").in("id", hospitalIds);
     const hospitalsById = new Map((targetHospitals || []).map((t) => [t.id, t]));
 
-    const speechText = escapeXml(
-      `Emergency blood request for ${emergency.blood_group}. ` +
-      `${emergency.units_needed} unit${emergency.units_needed === 1 ? "" : "s"} urgently needed by ` +
-      `${emergency.requesting_hospital?.name || "a hospital"}. ` +
-      `Urgency level: ${emergency.urgency}. Please verify blood stock and call back.`,
-    );
-
-    // --- TELEGRAM DISPATCH (100% Free Forever with sound & click-to-call) ---
-    const telegramToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
-    const telegramChatIdsRaw = Deno.env.get("TELEGRAM_CHAT_ID") || "";
-    const telegramChatIds = telegramChatIdsRaw.split(",").map((s) => s.trim()).filter(Boolean);
-
-    if (telegramToken && telegramChatIds.length > 0) {
-      try {
-        const urgencyHeader = emergency.urgency === "critical"
-          ? "🚨🚨 *[CRITICAL EMERGENCY]* 🚨🚨"
-          : emergency.urgency === "urgent"
-            ? "⚠️ *[URGENT BLOOD REQUEST]* ⚠️"
-            : "ℹ️ *[MODERATE PRIORITY REQUEST]*";
-
-        const requestingPhone = emergency.requesting_hospital?.phone || "";
-        const hospitalName = emergency.requesting_hospital?.name || "Emergency Department";
-        const hospitalCity = emergency.requesting_hospital?.city || "";
-
-        const telegramText =
-          `${urgencyHeader}\n\n` +
-          `🩸 *Blood Group:* \`${emergency.blood_group}\`\n` +
-          `📦 *Units Required:* *${emergency.units_needed} unit(s)*\n` +
-          `⚡ *Urgency Level:* *${emergency.urgency.toUpperCase()}*\n\n` +
-          `🏥 *Hospital:* ${hospitalName}\n` +
-          (hospitalCity ? `📍 *Location:* ${hospitalCity}\n` : "") +
-          (requestingPhone ? `📞 *Phone:* \`${requestingPhone}\`\n\n` : "\n") +
-          `🎯 *Broadcasted To:* ${calls.length} hospital(s)\n` +
-          `⏰ *Time:* ${new Date().toLocaleTimeString()} (IST)\n\n` +
-          `_Immediate action requested. Please check your inventory!_`;
-
-        const inlineKeyboard: Array<Array<{ text: string; url: string }>> = [];
-        if (requestingPhone) {
-          const cleanPhone = requestingPhone.replace(/[\s().-]/g, "");
-          inlineKeyboard.push([{ text: `📞 Click to Call ${hospitalName}`, url: `tel:${cleanPhone}` }]);
-        }
-
-        await Promise.all(telegramChatIds.map(async (chatId) => {
-          return fetch(`https://api.telegram.org/bot${telegramToken}/sendMessage`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              chat_id: chatId,
-              text: telegramText,
-              parse_mode: "Markdown",
-              disable_notification: false, // Rings recipient device with sound
-              reply_markup: inlineKeyboard.length > 0 ? { inline_keyboard: inlineKeyboard } : undefined,
-            }),
-          }).catch((err) => console.error("Telegram delivery error:", err));
-        }));
-      } catch (tgErr) {
-        console.error("Telegram broadcast error:", tgErr);
-      }
-    }
-
-    // Optional webhook trigger (for Zapier, Make, custom backend)
-    const webhookUrl = Deno.env.get("EMERGENCY_WEBHOOK_URL");
-    if (webhookUrl) {
-      try {
-        fetch(webhookUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            event: "emergency_broadcast",
-            emergencyRequestId: emergency.id,
-            bloodGroup: emergency.blood_group,
-            unitsNeeded: emergency.units_needed,
-            urgency: emergency.urgency,
-            hospital: emergency.requesting_hospital?.name,
-            recipients: calls.map((c) => ({
-              hospitalId: c.hospital_id,
-              name: hospitalsById.get(c.hospital_id)?.name,
-              phone: hospitalsById.get(c.hospital_id)?.phone,
-            })),
-          }),
-        }).catch(() => {});
-      } catch (_) {}
-    }
-
-    // Process calls per provider
+    // Process voice calls per provider
     const results = await Promise.all(calls.map(async (call) => {
       const targetHospital = hospitalsById.get(call.hospital_id);
       const recipientPhone = normalizePhoneNumber(targetHospital?.phone);
@@ -363,23 +453,28 @@ Deno.serve(async (req: Request) => {
         .update({ call_status: "calling", updated_at: new Date().toISOString() })
         .eq("id", call.id);
 
-      // --- PROVIDER: TELEGRAM (100% Free Forever) ---
-      if (configuredProvider === "telegram") {
-        const tgSid = `tg_${Date.now()}_${call.id.slice(0, 8)}`;
-        await supabase.from("emergency_calls").update({
-          call_status: "answered",
-          call_sid: tgSid,
-          call_duration: 1,
-          updated_at: new Date().toISOString(),
-        }).eq("id", call.id);
+      // --- PROVIDER: TWILIO VOICE CALL ---
+      if (configuredProvider === "twilio") {
+        const accountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
+        const authToken = Deno.env.get("TWILIO_AUTH_TOKEN");
+        const twilioFrom = normalizeFromPhoneNumber(Deno.env.get("TWILIO_FROM_NUMBER"));
 
-        return {
-          hospitalId: call.hospital_id,
-          status: "answered",
-          callSid: tgSid,
-          provider: "telegram",
-          note: "Emergency alert sent to Telegram with audible ring notification and click-to-call",
-        };
+        if (!accountSid || !authToken || !twilioFrom) {
+          await supabase.from("emergency_calls").update({ call_status: "failed", updated_at: new Date().toISOString() }).eq("id", call.id);
+          return { hospitalId: call.hospital_id, status: "failed", error: "Twilio configuration incomplete" };
+        }
+
+        const answerUrl = `${supabaseUrl}/functions/v1/emergency-call?action=answer&emergencyId=${emergency.id}`;
+
+        const callResult = await makeTwilioCall(accountSid, authToken, twilioFrom, recipientPhone, answerUrl);
+
+        if (callResult.ok) {
+          await supabase.from("emergency_calls").update({ call_status: "calling", call_sid: callResult.sid, updated_at: new Date().toISOString() }).eq("id", call.id);
+          return { hospitalId: call.hospital_id, status: "calling", provider: "twilio", callSid: callResult.sid, note: "Voice call initiated" };
+        } else {
+          await supabase.from("emergency_calls").update({ call_status: "failed", updated_at: new Date().toISOString() }).eq("id", call.id);
+          return { hospitalId: call.hospital_id, status: "failed", error: callResult.error || "Twilio voice call error" };
+        }
       }
 
       // --- PROVIDER: PLIVO ---
@@ -438,7 +533,7 @@ Deno.serve(async (req: Request) => {
 
         if (!exoSid || !exoKey || !exoToken || !exoCallerId) {
           await supabase.from("emergency_calls").update({ call_status: "failed", updated_at: new Date().toISOString() }).eq("id", call.id);
-          return { hospitalId: call.hospital_id, status: "failed", error: "Exotel configuration incomplete (EXOTEL_ACCOUNT_SID, EXOTEL_API_KEY, EXOTEL_API_TOKEN, EXOTEL_CALLER_ID)" };
+          return { hospitalId: call.hospital_id, status: "failed", error: "Exotel configuration incomplete" };
         }
 
         try {
@@ -452,7 +547,7 @@ Deno.serve(async (req: Request) => {
           }
           params.append("StatusCallback", `${supabaseUrl}/functions/v1/emergency-call?provider=exotel&action=callback`);
 
-          const exotelRes = await fetch(`https://api.exotel.com/v1/Accounts/${exoSid}/Calls/connect.json`, {
+          const exotelRes = await fetch(`https://api.exotel.com/v1/Accounts/${exoSid}/Calls.json`, {
             method: "POST",
             headers: {
               Authorization: "Basic " + btoa(`${exoKey}:${exoToken}`),
@@ -476,55 +571,7 @@ Deno.serve(async (req: Request) => {
         }
       }
 
-      // --- PROVIDER: TWILIO (Preserved) ---
-      if (configuredProvider === "twilio") {
-        const accountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
-        const authToken = Deno.env.get("TWILIO_AUTH_TOKEN");
-        const twilioFrom = normalizePhoneNumber(Deno.env.get("TWILIO_FROM_NUMBER"));
-        const baseUrl = Deno.env.get("TWILIO_BASE_URL") || "https://api.twilio.com";
-        const callbackUrl = `${supabaseUrl}/functions/v1/emergency-call`;
-
-        if (!accountSid || !authToken || !twilioFrom) {
-          await supabase.from("emergency_calls").update({ call_status: "failed", updated_at: new Date().toISOString() }).eq("id", call.id);
-          return { hospitalId: call.hospital_id, status: "failed", error: "Twilio configuration incomplete" };
-        }
-
-        try {
-          const twiml = `<Response><Say voice="alice">${speechText}</Say><Pause length="2"/><Say voice="alice">Repeating this hospital inventory request.</Say><Pause length="1"/><Say voice="alice">${speechText}</Say></Response>`;
-          const params = new URLSearchParams();
-          params.append("To", recipientPhone);
-          params.append("From", twilioFrom);
-          params.append("Twiml", twiml);
-          params.append("StatusCallback", callbackUrl);
-          params.append("StatusCallbackMethod", "POST");
-          params.append("StatusCallbackEvent", "initiated ringing answered completed");
-
-          const twilioResponse = await fetch(`${baseUrl}/2010-04-01/Accounts/${accountSid}/Calls.json`, {
-            method: "POST",
-            headers: {
-              Authorization: "Basic " + btoa(`${accountSid}:${authToken}`),
-              "Content-Type": "application/x-www-form-urlencoded",
-            },
-            body: params.toString(),
-          });
-
-          if (twilioResponse.ok) {
-            const twilioData = await twilioResponse.json();
-            await supabase.from("emergency_calls").update({ call_status: "calling", call_sid: twilioData.sid, updated_at: new Date().toISOString() }).eq("id", call.id);
-            return { hospitalId: call.hospital_id, status: "calling", provider: "twilio" };
-          } else {
-            const errData = await twilioResponse.json().catch(() => ({}));
-            await supabase.from("emergency_calls").update({ call_status: "failed", updated_at: new Date().toISOString() }).eq("id", call.id);
-            return { hospitalId: call.hospital_id, status: "failed", error: errData.message || "Twilio error" };
-          }
-        } catch (err) {
-          await supabase.from("emergency_calls").update({ call_status: "failed", updated_at: new Date().toISOString() }).eq("id", call.id);
-          return { hospitalId: call.hospital_id, status: "failed", error: String(err) };
-        }
-      }
-
       // --- FALLBACK: DEMO SIMULATION MODE ---
-      // Seamlessly simulates call progression (calling -> ringing -> answered) for testing & demo without crash
       const mockSid = `demo_${Date.now()}_${call.id.slice(0, 8)}`;
       await supabase.from("emergency_calls").update({
         call_status: "calling",
@@ -556,7 +603,7 @@ Deno.serve(async (req: Request) => {
         status: "calling",
         callSid: mockSid,
         mode: "demo",
-        note: "Simulated emergency dispatch (set PLIVO_AUTH_ID or EXOTEL_ACCOUNT_SID in Supabase secrets for real carrier calls)",
+        note: "Simulated emergency dispatch (set TWILIO_ACCOUNT_SID in Supabase secrets for real calls)",
       };
     }));
 
