@@ -6,6 +6,8 @@ import { useAuth } from '@/lib/auth';
 import { supabase, BLOOD_GROUPS, type Hospital, type Appointment, type Certificate, type Donation, type DonorReward, type RewardRule } from '@/lib/supabase';
 import { useLanguage } from '@/lib/i18n';
 import { buildCertificateHtml } from '@/lib/certificateTemplate';
+import { DonorEligibilityCalculator } from '@/components/DonorEligibilityCalculator';
+import { InteractiveEmergencyMap } from '@/components/InteractiveEmergencyMap';
 
 type View = 'overview' | 'appointments' | 'certificates' | 'profile';
 type AppointmentFilter = 'all' | 'scheduled' | 'completed' | 'cancelled';
