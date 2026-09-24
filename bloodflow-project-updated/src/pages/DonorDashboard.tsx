@@ -22,6 +22,7 @@ export function DonorDashboard() {
   const [rewards, setRewards] = useState<DonorReward[]>([]);
   const [rewardRules, setRewardRules] = useState<RewardRule[]>([]);
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
+  const [emergencies, setEmergencies] = useState<EmergencyRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [showSchedule, setShowSchedule] = useState(false);
   const [appointmentFilter, setAppointmentFilter] = useState<AppointmentFilter>('all');
@@ -31,13 +32,14 @@ export function DonorDashboard() {
   const loadData = useCallback(async () => {
     if (!profile) return;
     setLoading(true);
-    const [apptsRes, certsRes, hospRes, donationsRes, rewardsRes, rulesRes] = await Promise.all([
+    const [apptsRes, certsRes, hospRes, donationsRes, rewardsRes, rulesRes, emRes] = await Promise.all([
       supabase.from('appointments').select('*').eq('donor_id', profile.id).order('appointment_date', { ascending: false }),
       supabase.from('certificates').select('*').eq('donor_id', profile.id).order('issued_at', { ascending: false }),
       supabase.from('hospitals').select('*').order('name'),
       supabase.from('donations').select('*').eq('donor_id', profile.id).eq('verified', true).order('donation_date', { ascending: false }),
       supabase.from('donor_rewards').select('*').eq('donor_id', profile.id).order('created_at', { ascending: false }),
       supabase.from('reward_rules').select('*').eq('active', true).order('donation_count'),
+      supabase.from('emergency_requests').select('*').eq('status', 'active'),
     ]);
     setAppointments(apptsRes.data || []);
     setCertificates(certsRes.data || []);
@@ -45,6 +47,7 @@ export function DonorDashboard() {
     setDonations(donationsRes.data || []);
     setRewards(rewardsRes.data || []);
     setRewardRules(rulesRes.data || []);
+    setEmergencies(emRes.data || []);
     setLoading(false);
   }, [profile]);
 
@@ -257,6 +260,10 @@ export function DonorDashboard() {
               )}
             </Card>
           </div>
+
+          <DonorEligibilityCalculator profile={profile} onUpdate={refreshProfile} />
+
+          <InteractiveEmergencyMap hospitals={hospitals} emergencies={emergencies} />
 
           <DonationHistory donations={donations} hospitals={hospitals} rewards={rewards} />
         </>

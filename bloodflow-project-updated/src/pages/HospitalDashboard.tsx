@@ -37,6 +37,7 @@ import {
 } from '@/lib/supabase';
 import { useLanguage } from '@/lib/i18n';
 import { RewardManagement } from '@/components/RewardManagement';
+import { InteractiveEmergencyMap } from '@/components/InteractiveEmergencyMap';
 
 type View = 'overview' | 'donors' | 'inventory' | 'emergency' | 'settings' | 'rewards';
 
@@ -351,6 +352,8 @@ export function HospitalDashboard() {
               )}
             </Card>
           </div>
+
+          <InteractiveEmergencyMap hospitals={allHospitals} emergencies={emergencies} />
         </>
       )}
 
