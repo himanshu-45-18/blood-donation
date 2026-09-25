@@ -459,14 +459,14 @@ Deno.serve(async (req: Request) => {
               `Please check your blood bank inventory and contact ${hospName} immediately.`;
 
             hindiMsg =
-              `आपातकालीन चेतावनी! यह ${hospName} से एक स्वचालित आपातकालीन कॉल है। ` +
+              `आपातकालीन सूचना! यह ${hospName} से एक स्वचालित आपातकालीन कॉल है। ` +
               `हमें ${bgHi} रक्त की ${units} यूनिटों की तत्काल आवश्यकता है। ` +
               `कृपया अपने ब्लड बैंक स्टॉक की जांच करें और तुरंत संपर्क करें।`;
 
             marathiMsg =
-              `तातडीची आणीबाणी सूचना! ही ${hospName} रुग्णालयाकडून आलेली स्वयंचलित कॉल आहे। ` +
-              `आम्हाला ${bgMr} रक्ताच्या ${units} युनिटची तातडीने गरज आहे। ` +
-              `कृपया तुमच्या रक्तपेढीचा साठा तपासा आणि त्वरित संपर्क साधा।`;
+              `महत्त्वाची सूचना! ही ${hospName} कडून आलेली ऑटोमॅटिक आपातकालीन कॉल आहे. ` +
+              `आम्हाला ${bgMr} रक्ताची ${units} युनिट तातडीने हवी आहेत. ` +
+              `कृपया तुमच्या ब्लड बँकेतील साठा तपासा आणि रुग्णालयाशी त्वरित संपर्क साधा.`;
           }
         } catch (_) {}
       }
@@ -479,9 +479,9 @@ Deno.serve(async (req: Request) => {
         `  <Pause length="1.5"/>\n` +
         `  <Say voice="Polly.Aditi" language="hi-IN">${escapeXml(hindiMsg)}</Say>\n` +
         `  <Pause length="1.5"/>\n` +
-        `  <Say voice="Polly.Aditi" language="mr-IN">${escapeXml(marathiMsg)}</Say>\n` +
+        `  <Say voice="Polly.Aditi" language="hi-IN">${escapeXml(marathiMsg)}</Say>\n` +
         `  <Pause length="1"/>\n` +
-        `  <Say voice="Polly.Aditi" language="mr-IN">धन्यवाद.</Say>\n` +
+        `  <Say voice="Polly.Aditi" language="hi-IN">धन्यवाद.</Say>\n` +
         `</Response>`;
 
       return new Response(
