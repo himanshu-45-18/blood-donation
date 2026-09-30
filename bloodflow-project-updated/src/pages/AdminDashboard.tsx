@@ -17,6 +17,7 @@ import {
   Droplets,
   UserPlus,
   ClipboardCheck,
+  Trash2,
 } from 'lucide-react';
 import { DashboardLayout, PageHeader, StatCard } from '@/components/DashboardLayout';
 import { Card, Badge, Input, Button, EmptyState, Skeleton, ConfirmDialog } from '@/components/ui';
@@ -104,6 +105,36 @@ export function AdminDashboard() {
         'Hospital approval failed: no hospital was updated. Apply the latest Supabase migration and make sure this account has the admin role.',
       );
       return;
+    }
+    await loadData();
+  }
+
+  async function deleteHospital(hospitalId: string) {
+    setActionError('');
+    // Try RPC first (handles cascade across all related tables)
+    const { error: rpcError } = await supabase.rpc('delete_hospital_by_admin', { target_hospital_id: hospitalId });
+    if (rpcError) {
+      // Fallback: direct delete (relies on DB cascades)
+      const { error } = await supabase.from('hospitals').delete().eq('id', hospitalId);
+      if (error) {
+        setActionError(`Delete hospital failed: ${error.message}. Run supabase/fix-admin-delete-rpc.sql in Supabase SQL Editor first.`);
+        return;
+      }
+    }
+    await loadData();
+  }
+
+  async function deleteDonor(donorId: string) {
+    setActionError('');
+    // Try RPC first (handles cascade across all related tables + auth.users)
+    const { error: rpcError } = await supabase.rpc('delete_donor_by_admin', { target_donor_id: donorId });
+    if (rpcError) {
+      // Fallback: delete profile only (relies on auth trigger cascade)
+      const { error } = await supabase.from('profiles').delete().eq('id', donorId);
+      if (error) {
+        setActionError(`Delete donor failed: ${error.message}. Run supabase/fix-admin-delete-rpc.sql in Supabase SQL Editor first.`);
+        return;
+      }
     }
     await loadData();
   }
@@ -231,16 +262,35 @@ export function AdminDashboard() {
                         </div>
                         <p className="text-[11px] text-slate-500 truncate mt-0.5">{donor.email}</p>
                       </div>
-                      <Button
-                        size="xs"
-                        variant="primary"
-                        onClick={async () => {
-                          await supabase.from('profiles').update({ is_verified: true }).eq('id', donor.id);
-                          loadData();
-                        }}
-                      >
-                        <CheckCircle2 className="h-3.5 w-3.5" /> {tr('Verify')}
-                      </Button>
+                      <div className="flex gap-1.5 shrink-0">
+                        <Button
+                          size="xs"
+                          variant="primary"
+                          onClick={async () => {
+                            await supabase.from('profiles').update({ is_verified: true }).eq('id', donor.id);
+                            loadData();
+                          }}
+                        >
+                          <CheckCircle2 className="h-3.5 w-3.5" /> {tr('Verify')}
+                        </Button>
+                        <Button
+                          size="xs"
+                          variant="danger"
+                          onClick={() =>
+                            setConfirmDialog({
+                              open: true,
+                              title: 'Delete Donor Account',
+                              message: `Permanently delete donor account "${donor.full_name}" (${donor.email})? This will remove all their data and cannot be undone.`,
+                              danger: true,
+                              onConfirm: async () => {
+                                await deleteDonor(donor.id);
+                              },
+                            })
+                          }
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -282,9 +332,26 @@ export function AdminDashboard() {
                           <MapPin className="h-3 w-3 text-slate-400" /> {hosp.city} · {hosp.phone}
                         </p>
                       </div>
-                      <Button size="xs" variant="primary" onClick={() => updateHospitalApproval(hosp.id, true)}>
-                        <CheckCircle2 className="h-3.5 w-3.5" /> {tr('Approve')}
-                      </Button>
+                      <div className="flex gap-1.5 shrink-0">
+                        <Button size="xs" variant="primary" onClick={() => updateHospitalApproval(hosp.id, true)}>
+                          <CheckCircle2 className="h-3.5 w-3.5" /> {tr('Approve')}
+                        </Button>
+                        <Button
+                          size="xs"
+                          variant="danger"
+                          onClick={() =>
+                            setConfirmDialog({
+                              open: true,
+                              title: 'Delete Hospital Account',
+                              message: `Permanently delete hospital "${hosp.name}"? All associated inventory, appointments and emergency requests will be removed. This cannot be undone.`,
+                              danger: true,
+                              onConfirm: async () => { await deleteHospital(hosp.id); },
+                            })
+                          }
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -330,6 +397,7 @@ export function AdminDashboard() {
                 })}
               onUpdate={loadData}
               onRequestConfirm={(opts) => setConfirmDialog({ open: true, ...opts })}
+              onDeleteDonor={(donorId) => deleteDonor(donorId)}
             />
           )}
         </>
@@ -410,6 +478,21 @@ export function AdminDashboard() {
                         <XCircle className="h-3.5 w-3.5" /> {tr('Revoke')}
                       </Button>
                     )}
+                    <Button
+                      size="xs"
+                      variant="danger"
+                      onClick={() =>
+                        setConfirmDialog({
+                          open: true,
+                          title: 'Delete Hospital Account',
+                          message: `Permanently delete "${hosp.name}"? All inventory, appointments and emergency requests will be removed. This cannot be undone.`,
+                          danger: true,
+                          onConfirm: async () => { await deleteHospital(hosp.id); },
+                        })
+                      }
+                    >
+                      <Trash2 className="h-3.5 w-3.5" /> Delete
+                    </Button>
                   </div>
                 </Card>
               ))}
@@ -779,10 +862,12 @@ function DonorsTable({
   donors,
   onUpdate,
   onRequestConfirm,
+  onDeleteDonor,
 }: {
   donors: Profile[];
   onUpdate: () => void;
   onRequestConfirm: (opts: { title: string; message: string; danger?: boolean; onConfirm: () => Promise<void> }) => void;
+  onDeleteDonor: (donorId: string) => void;
 }) {
   const { tr } = useLanguage();
   if (donors.length === 0) {
@@ -808,7 +893,7 @@ function DonorsTable({
               <th className="px-5 py-3.5">Blood Group</th>
               <th className="px-5 py-3.5">City</th>
               <th className="px-5 py-3.5">Status</th>
-              <th className="px-5 py-3.5 text-right">Action</th>
+              <th className="px-5 py-3.5 text-right">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -837,36 +922,52 @@ function DonorsTable({
                   )}
                 </td>
                 <td className="px-5 py-3.5 text-right">
-                  {donor.is_verified ? (
+                  <div className="flex items-center justify-end gap-1.5">
+                    {donor.is_verified ? (
+                      <Button
+                        size="xs"
+                        variant="danger-subtle"
+                        onClick={() =>
+                          onRequestConfirm({
+                            title: 'Revoke Donor Verification',
+                            message: `Are you sure you want to revoke verification for ${donor.full_name}? The donor will need administrator review before scheduling further appointments.`,
+                            danger: true,
+                            onConfirm: async () => {
+                              await supabase.from('profiles').update({ is_verified: false }).eq('id', donor.id);
+                              onUpdate();
+                            },
+                          })
+                        }
+                      >
+                        Revoke
+                      </Button>
+                    ) : (
+                      <Button
+                        size="xs"
+                        variant="primary"
+                        onClick={async () => {
+                          await supabase.from('profiles').update({ is_verified: true }).eq('id', donor.id);
+                          onUpdate();
+                        }}
+                      >
+                        Verify
+                      </Button>
+                    )}
                     <Button
                       size="xs"
-                      variant="danger-subtle"
+                      variant="danger"
                       onClick={() =>
                         onRequestConfirm({
-                          title: 'Revoke Donor Verification',
-                          message: `Are you sure you want to revoke verification for ${donor.full_name}? The donor will need administrator review before scheduling further appointments.`,
+                          title: 'Delete Donor Account',
+                          message: `Permanently delete donor account "${donor.full_name}" (${donor.email})? This will remove all their data and login access. This cannot be undone.`,
                           danger: true,
-                          onConfirm: async () => {
-                            await supabase.from('profiles').update({ is_verified: false }).eq('id', donor.id);
-                            onUpdate();
-                          },
+                          onConfirm: async () => { onDeleteDonor(donor.id); },
                         })
                       }
                     >
-                      Revoke
+                      <Trash2 className="h-3.5 w-3.5" />
                     </Button>
-                  ) : (
-                    <Button
-                      size="xs"
-                      variant="primary"
-                      onClick={async () => {
-                        await supabase.from('profiles').update({ is_verified: true }).eq('id', donor.id);
-                        onUpdate();
-                      }}
-                    >
-                      Verify
-                    </Button>
-                  )}
+                  </div>
                 </td>
               </tr>
             ))}

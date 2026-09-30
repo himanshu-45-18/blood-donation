@@ -14,13 +14,10 @@ import {
   Phone,
   MapPin,
   Globe,
-  Sparkles,
   Droplets,
   ShieldCheck,
   Eye,
   EyeOff,
-  Stethoscope,
-  ChevronRight,
   AlertCircle,
 } from 'lucide-react';
 import { supabase, BLOOD_GROUPS } from '@/lib/supabase';
@@ -184,120 +181,58 @@ export function AuthPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col lg:grid lg:grid-cols-12 font-sans selection:bg-red-500 selection:text-white">
-      {/* Left Panel — Rich Healthcare Branding & Showcase */}
-      <div className="relative hidden overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-red-950 lg:flex lg:col-span-5 xl:col-span-5 lg:flex-col lg:justify-between lg:p-10 xl:p-12 text-white border-r border-slate-800/80">
-        {/* Ambient Red Glow Blobs */}
-        <div className="pointer-events-none absolute inset-0 overflow-hidden">
-          <div className="absolute -left-20 top-10 h-80 w-80 rounded-full bg-red-600/25 blur-[120px]" />
-          <div className="absolute right-0 top-1/2 h-96 w-96 rounded-full bg-rose-600/20 blur-[140px]" />
-          <div className="absolute bottom-10 left-1/3 h-64 w-64 rounded-full bg-amber-600/15 blur-[100px]" />
-        </div>
-
-        {/* Pulse ECG Background Graphic */}
-        <div className="pointer-events-none absolute left-0 right-0 top-1/3 -translate-y-1/2 opacity-10">
-          <svg className="w-full h-32 text-red-500" viewBox="0 0 1200 120" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <path d="M0,60 L400,60 L420,20 L440,100 L460,40 L480,80 L500,60 L1200,60" />
-          </svg>
-        </div>
-
+      {/* Left Panel — Clean Simple Healthcare Branding */}
+      <div className="relative hidden bg-slate-900 lg:flex lg:col-span-5 xl:col-span-5 lg:flex-col lg:justify-between lg:p-10 xl:p-12 text-white border-r border-slate-800">
         {/* Top Header */}
-        <div className="relative z-10 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-red-600 to-rose-600 p-2 shadow-lg shadow-red-600/30 ring-1 ring-white/20">
-              <Droplets className="h-6 w-6 text-white" />
-            </div>
-            <div>
-              <span className="text-xl font-black tracking-tight text-white block leading-none">BloodFlow</span>
-              <span className="text-[10px] font-bold text-red-400 tracking-wider uppercase leading-none mt-1 block">
-                Healthcare Network
-              </span>
-            </div>
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-red-600 p-2 shadow-md">
+            <Droplets className="h-6 w-6 text-white" />
           </div>
-          <div className="flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs text-slate-200 backdrop-blur-md shadow-xs">
-            <Sparkles className="h-3.5 w-3.5 text-red-400 animate-pulse" />
-            <span className="text-[11px] font-semibold">Verified Platform</span>
+          <div>
+            <span className="text-xl font-black tracking-tight text-white block leading-none">BloodFlow</span>
+            <span className="text-[10px] font-bold text-red-400 tracking-wider uppercase leading-none mt-1 block">
+              Healthcare Network
+            </span>
           </div>
         </div>
 
         {/* Main Value Proposition */}
-        <div className="relative z-10 my-auto py-6">
-          <div className="inline-flex items-center gap-2 rounded-full bg-red-500/15 border border-red-500/30 px-3.5 py-1 text-xs font-bold text-red-300 mb-6 backdrop-blur-sm">
-            <Stethoscope className="h-3.5 w-3.5 text-red-400" />
-            Centralized Emergency Blood Dispatch
-          </div>
-          
+        <div className="my-auto py-6">
           <h1 className="text-3xl xl:text-4xl font-black leading-tight tracking-tight text-white">
-            Connecting donors, hospitals, and blood banks in{' '}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-500 via-rose-400 to-amber-400">
-              real time.
-            </span>
+            Connecting donors, hospitals &amp; blood banks in{' '}
+            <span className="text-red-400">real time.</span>
           </h1>
 
-          <p className="mt-4 text-sm xl:text-base text-slate-300 leading-relaxed">
-            Streamlining emergency blood requests, inventory synchronization, and scheduled donor appointments with clinical precision.
+          <p className="mt-4 text-sm text-slate-400 leading-relaxed max-w-sm">
+            Emergency blood requests, live inventory sync, and donor appointments — all in one platform.
           </p>
 
-          {/* Glassmorphism Feature Cards */}
-          <div className="mt-8 space-y-3.5">
+          <div className="mt-8 space-y-4">
             {[
-              {
-                icon: <Activity className="h-4 w-4 text-red-400" />,
-                badgeBg: 'bg-red-500/20',
-                title: 'Real-Time Inventory Sync',
-                text: 'Live stock tracking across hospitals and regional blood banks.',
-              },
-              {
-                icon: <Clock className="h-4 w-4 text-amber-400" />,
-                badgeBg: 'bg-amber-500/20',
-                title: 'Trilingual Emergency Alerts',
-                text: 'Automated voice call alerts dispatched in English, Hindi & Marathi.',
-              },
-              {
-                icon: <Users className="h-4 w-4 text-emerald-400" />,
-                badgeBg: 'bg-emerald-500/20',
-                title: 'Verified Donors & GPS Navigation',
-                text: 'Scheduled appointments, turn-by-turn map directions & rewards.',
-              },
+              { icon: <Activity className="h-4 w-4 text-red-400" />, title: 'Real-Time Inventory Sync', text: 'Live stock across hospitals and blood banks.' },
+              { icon: <Clock className="h-4 w-4 text-amber-400" />, title: 'Trilingual Emergency Alerts', text: 'Voice calls in English, Hindi & Marathi.' },
+              { icon: <Users className="h-4 w-4 text-emerald-400" />, title: 'Verified Donors', text: 'Appointments, GPS directions & certificates.' },
             ].map((f, i) => (
-              <div
-                key={i}
-                className="group flex items-start gap-3.5 rounded-2xl border border-white/10 bg-white/[0.05] p-3.5 backdrop-blur-md transition-all duration-300 hover:-translate-y-0.5 hover:bg-white/[0.09] hover:border-red-500/40 hover:shadow-xl hover:shadow-red-950/40"
-              >
-                <div className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-xl shadow-xs transition-transform duration-300 group-hover:scale-110', f.badgeBg)}>
+              <div key={i} className="flex items-start gap-3.5">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-800 border border-slate-700">
                   {f.icon}
                 </div>
                 <div>
-                  <h4 className="text-xs sm:text-sm font-bold text-white leading-snug">{f.title}</h4>
-                  <p className="text-xs text-slate-300 mt-0.5 leading-relaxed">{f.text}</p>
+                  <h4 className="text-sm font-bold text-white leading-snug">{f.title}</h4>
+                  <p className="text-xs text-slate-400 mt-0.5">{f.text}</p>
                 </div>
               </div>
             ))}
           </div>
-
-          {/* Trust & Stats Strip */}
-          <div className="mt-8 pt-6 border-t border-white/10 grid grid-cols-3 gap-2 text-center">
-            <div className="rounded-xl border border-white/5 bg-white/[0.03] p-2.5">
-              <div className="text-base sm:text-lg font-black text-red-400">10,000+</div>
-              <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Donors</div>
-            </div>
-            <div className="rounded-xl border border-white/5 bg-white/[0.03] p-2.5">
-              <div className="text-base sm:text-lg font-black text-emerald-400">250+</div>
-              <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Hospitals</div>
-            </div>
-            <div className="rounded-xl border border-white/5 bg-white/[0.03] p-2.5">
-              <div className="text-base sm:text-lg font-black text-amber-400">24/7</div>
-              <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Emergency</div>
-            </div>
-          </div>
         </div>
 
         {/* Footer Trust Badge */}
-        <div className="relative z-10 flex items-center justify-between border-t border-white/10 pt-5 text-xs text-slate-400">
+        <div className="flex items-center justify-between border-t border-slate-800 pt-5 text-xs text-slate-500">
           <div className="flex items-center gap-2">
-            <ShieldCheck className="h-4 w-4 text-emerald-400" />
-            <span>Secure & HIPAA Aligned</span>
+            <ShieldCheck className="h-4 w-4 text-emerald-500" />
+            <span>Secure &amp; HIPAA Aligned</span>
           </div>
-          <span className="font-mono text-[11px] text-slate-400">v2.5 Production</span>
+          <span className="font-mono">v2.5 Production</span>
         </div>
       </div>
 
