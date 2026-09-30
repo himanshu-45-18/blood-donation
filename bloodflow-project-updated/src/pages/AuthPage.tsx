@@ -181,92 +181,44 @@ export function AuthPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col lg:grid lg:grid-cols-12 font-sans selection:bg-red-500 selection:text-white">
-      {/* Left Panel — Balanced Healthcare Branding */}
-      <div className="hidden bg-gradient-to-br from-red-900 via-slate-900 to-slate-950 lg:flex lg:col-span-5 xl:col-span-5 lg:flex-col lg:justify-between lg:p-10 xl:p-12 text-white border-r border-slate-800">
-        {/* Top Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <img src="/logo.png" alt="BloodFlow" className="h-10 w-10 rounded-xl bg-white p-1 object-cover shadow-sm" />
-            <div>
-              <span className="text-xl font-bold tracking-tight text-white block leading-none">BloodFlow</span>
-              <span className="text-[10px] font-semibold text-red-400 uppercase tracking-wider block mt-1">Healthcare Platform</span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-1.5 rounded-full bg-red-500/20 border border-red-400/30 px-3 py-1 text-xs text-red-200">
-            <span className="h-2 w-2 rounded-full bg-red-400 animate-pulse" />
-            <span className="text-[11px] font-medium">Live Emergency</span>
-          </div>
+      {/* Left Panel — Simple, Clean & Elegant */}
+      <div className="hidden bg-slate-900 lg:flex lg:col-span-5 xl:col-span-5 lg:flex-col lg:justify-between lg:p-12 text-white border-r border-slate-800">
+        {/* Logo */}
+        <div className="flex items-center gap-3">
+          <img src="/logo.png" alt="BloodFlow" className="h-10 w-10 rounded-xl bg-white p-1 object-cover shadow-sm" />
+          <span className="text-xl font-bold tracking-tight text-white">BloodFlow</span>
         </div>
 
         {/* Main Content */}
-        <div className="my-auto py-6">
+        <div className="my-auto py-8">
           <h1 className="text-3xl xl:text-4xl font-extrabold leading-tight text-white">
-            Connecting blood donors &amp; hospitals in <span className="text-red-400">real time.</span>
+            Connecting blood donors and hospitals.
           </h1>
 
-          <p className="mt-3 text-sm text-slate-300 leading-relaxed max-w-md">
-            Streamlining emergency blood requests, inventory synchronization, and scheduled donor appointments.
+          <p className="mt-4 text-sm text-slate-400 leading-relaxed max-w-sm">
+            BloodFlow helps medical facilities find verified blood stock and reach nearby donors instantly during emergencies.
           </p>
 
-          {/* Feature Cards */}
-          <div className="mt-6 space-y-3">
-            {[
-              {
-                icon: <Droplets className="h-4 w-4 text-red-400" />,
-                title: 'Real-Time Stock Tracking',
-                desc: 'Live inventory across regional hospitals & blood banks.',
-              },
-              {
-                icon: <Phone className="h-4 w-4 text-amber-400" />,
-                title: 'Trilingual Voice Alerts',
-                desc: 'Automated emergency calls in English, Hindi & Marathi.',
-              },
-              {
-                icon: <Activity className="h-4 w-4 text-emerald-400" />,
-                title: 'Verified Donors & Rewards',
-                desc: 'Scheduled bookings, turn-by-turn map directions & certificates.',
-              },
-            ].map((f, i) => (
-              <div
-                key={i}
-                className="flex items-start gap-3.5 rounded-2xl border border-white/10 bg-white/[0.06] p-3.5 backdrop-blur-sm transition-all hover:bg-white/10"
-              >
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/10 shadow-xs">
-                  {f.icon}
-                </div>
-                <div>
-                  <h4 className="text-xs sm:text-sm font-bold text-white leading-snug">{f.title}</h4>
-                  <p className="text-xs text-slate-300 mt-0.5 leading-relaxed">{f.desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Stats Bar */}
-          <div className="mt-6 grid grid-cols-3 gap-2.5 pt-5 border-t border-white/10 text-center">
-            <div className="rounded-xl border border-white/10 bg-white/5 p-2.5">
-              <div className="text-base font-bold text-red-400">2,480+</div>
-              <div className="text-[10px] text-slate-400 uppercase font-semibold">Blood Units</div>
+          <div className="mt-8 space-y-4">
+            <div className="flex items-center gap-3 text-sm text-slate-300">
+              <CheckCircle2 className="h-5 w-5 text-red-500 shrink-0" />
+              <span>Real-time blood stock tracking</span>
             </div>
-            <div className="rounded-xl border border-white/10 bg-white/5 p-2.5">
-              <div className="text-base font-bold text-emerald-400">45+</div>
-              <div className="text-[10px] text-slate-400 uppercase font-semibold">Hospitals</div>
+            <div className="flex items-center gap-3 text-sm text-slate-300">
+              <CheckCircle2 className="h-5 w-5 text-red-500 shrink-0" />
+              <span>Automated emergency calls in English, Hindi &amp; Marathi</span>
             </div>
-            <div className="rounded-xl border border-white/10 bg-white/5 p-2.5">
-              <div className="text-base font-bold text-amber-400">24/7</div>
-              <div className="text-[10px] text-slate-400 uppercase font-semibold">Alerts</div>
+            <div className="flex items-center gap-3 text-sm text-slate-300">
+              <CheckCircle2 className="h-5 w-5 text-red-500 shrink-0" />
+              <span>Verified donor appointments and certificates</span>
             </div>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between border-t border-white/10 pt-4 text-xs text-slate-400">
-          <div className="flex items-center gap-2">
-            <ShieldCheck className="h-4 w-4 text-emerald-400" />
-            <span>Secure &amp; HIPAA Aligned Platform</span>
-          </div>
-          <span className="font-mono text-[11px]">v2.5 Release</span>
+        <div className="border-t border-slate-800 pt-5 text-xs text-slate-500 flex items-center gap-2">
+          <ShieldCheck className="h-4 w-4 text-emerald-500" />
+          <span>Secure Healthcare Network</span>
         </div>
       </div>
 
