@@ -88,6 +88,7 @@ export function DonorDashboard() {
     { id: 'profile', label: tr('My Profile'), icon: <User className="h-4 w-4" /> },
   ];
 
+  
   return (
     <DashboardLayout navItems={navItems} activeView={view} onNavigate={(v) => setView(v as View)} roleLabel="Donor">
       {view === 'overview' && (
