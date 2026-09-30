@@ -181,58 +181,44 @@ export function AuthPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col lg:grid lg:grid-cols-12 font-sans selection:bg-red-500 selection:text-white">
-      {/* Left Panel — Clean Simple Healthcare Branding */}
-      <div className="relative hidden bg-slate-900 lg:flex lg:col-span-5 xl:col-span-5 lg:flex-col lg:justify-between lg:p-10 xl:p-12 text-white border-r border-slate-800">
-        {/* Top Header */}
+      {/* Left Panel — Simple, Clean & Human */}
+      <div className="hidden bg-red-700 lg:flex lg:col-span-5 xl:col-span-5 lg:flex-col lg:justify-between lg:p-12 text-white">
+        {/* Logo */}
         <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-red-600 p-2 shadow-md">
-            <Droplets className="h-6 w-6 text-white" />
-          </div>
-          <div>
-            <span className="text-xl font-black tracking-tight text-white block leading-none">BloodFlow</span>
-            <span className="text-[10px] font-bold text-red-400 tracking-wider uppercase leading-none mt-1 block">
-              Healthcare Network
-            </span>
-          </div>
+          <img src="/logo.png" alt="BloodFlow" className="h-10 w-10 rounded-xl bg-white p-1 object-cover shadow-sm" />
+          <span className="text-xl font-bold tracking-tight text-white">BloodFlow</span>
         </div>
 
-        {/* Main Value Proposition */}
-        <div className="my-auto py-6">
-          <h1 className="text-3xl xl:text-4xl font-black leading-tight tracking-tight text-white">
-            Connecting donors, hospitals &amp; blood banks in{' '}
-            <span className="text-red-400">real time.</span>
+        {/* Main Content */}
+        <div className="my-auto py-8">
+          <h1 className="text-3xl xl:text-4xl font-extrabold leading-tight text-white">
+            Connecting blood donors and hospitals when seconds count.
           </h1>
 
-          <p className="mt-4 text-sm text-slate-400 leading-relaxed max-w-sm">
-            Emergency blood requests, live inventory sync, and donor appointments — all in one platform.
+          <p className="mt-4 text-base text-red-100 leading-relaxed max-w-md">
+            BloodFlow helps medical facilities find verified blood stock and reach nearby donors instantly during emergencies.
           </p>
 
-          <div className="mt-8 space-y-4">
-            {[
-              { icon: <Activity className="h-4 w-4 text-red-400" />, title: 'Real-Time Inventory Sync', text: 'Live stock across hospitals and blood banks.' },
-              { icon: <Clock className="h-4 w-4 text-amber-400" />, title: 'Trilingual Emergency Alerts', text: 'Voice calls in English, Hindi & Marathi.' },
-              { icon: <Users className="h-4 w-4 text-emerald-400" />, title: 'Verified Donors', text: 'Appointments, GPS directions & certificates.' },
-            ].map((f, i) => (
-              <div key={i} className="flex items-start gap-3.5">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-800 border border-slate-700">
-                  {f.icon}
-                </div>
-                <div>
-                  <h4 className="text-sm font-bold text-white leading-snug">{f.title}</h4>
-                  <p className="text-xs text-slate-400 mt-0.5">{f.text}</p>
-                </div>
-              </div>
-            ))}
-          </div>
+          <ul className="mt-8 space-y-3.5 text-sm text-red-50">
+            <li className="flex items-center gap-3">
+              <CheckCircle2 className="h-5 w-5 text-red-200 shrink-0" />
+              <span>Real-time blood stock tracking</span>
+            </li>
+            <li className="flex items-center gap-3">
+              <CheckCircle2 className="h-5 w-5 text-red-200 shrink-0" />
+              <span>Automated emergency alerts in English, Hindi &amp; Marathi</span>
+            </li>
+            <li className="flex items-center gap-3">
+              <CheckCircle2 className="h-5 w-5 text-red-200 shrink-0" />
+              <span>Verified donor appointments and certificates</span>
+            </li>
+          </ul>
         </div>
 
-        {/* Footer Trust Badge */}
-        <div className="flex items-center justify-between border-t border-slate-800 pt-5 text-xs text-slate-500">
-          <div className="flex items-center gap-2">
-            <ShieldCheck className="h-4 w-4 text-emerald-500" />
-            <span>Secure &amp; HIPAA Aligned</span>
-          </div>
-          <span className="font-mono">v2.5 Production</span>
+        {/* Simple Footer */}
+        <div className="border-t border-red-600/60 pt-5 text-xs text-red-200 flex items-center gap-2">
+          <ShieldCheck className="h-4 w-4 text-red-200" />
+          <span>Secure Healthcare Network</span>
         </div>
       </div>
 
