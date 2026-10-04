@@ -536,108 +536,92 @@ export function SmartBloodBankIoT({ hospital }: SmartBloodBankIoTProps) {
 
   return (
     <div className="space-y-6 font-sans">
-      {/* Top Banner & Control Bar */}
-      <div className="rounded-3xl border border-slate-800 bg-slate-900 p-5 sm:p-6 text-white shadow-xl">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-center gap-3.5">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-red-600 to-rose-600 shadow-lg shadow-red-600/30">
-              <Cpu className="h-6 w-6 text-white" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-xl font-black tracking-tight">Smart Blood Bank IoT</h2>
-                <Badge variant="red" dot>
-                  ESP32 (DS18B20 + RC522)
-                </Badge>
-              </div>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Real-Time Blood Storage Temperature &amp; RFID Unit Tracking System
-              </p>
-            </div>
+      {/* Top Header & Controls */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">Smart Blood Bank IoT</h2>
+            <Badge variant="red" dot>
+              ESP32 (DS18B20 + RC522)
+            </Badge>
           </div>
-
-          <div className="flex flex-wrap items-center gap-2.5">
-            {/* Demo Mode Toggle */}
-            <button
-              onClick={() => setDemoMode(!demoMode)}
-              className={cn(
-                'flex items-center gap-2 px-3.5 py-1.5 rounded-xl border text-xs font-bold transition-all shadow-xs select-none',
-                demoMode
-                  ? 'border-emerald-500/40 bg-emerald-950/40 text-emerald-300'
-                  : 'border-slate-700 bg-slate-800 text-slate-400'
-              )}
-            >
-              {demoMode ? (
-                <>
-                  <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                  <span>Demo IoT Simulation: ACTIVE</span>
-                </>
-              ) : (
-                <>
-                  <Pause className="h-3.5 w-3.5" />
-                  <span>Demo Simulation: PAUSED</span>
-                </>
-              )}
-            </button>
-
-            {/* Threshold Config Button */}
-            <Button size="xs" variant="outline" onClick={() => setShowConfigModal(true)} className="border-slate-700 bg-slate-800 text-slate-200">
-              <Sliders className="h-3.5 w-3.5 mr-1" /> Prototype Thresholds
-            </Button>
-
-            {/* Hardware Guide Button */}
-            <Button size="xs" onClick={() => setShowHardwareGuideModal(true)} className="bg-red-600 hover:bg-red-500 text-white font-bold">
-              <Code2 className="h-3.5 w-3.5 mr-1" /> Hardware Guide
-            </Button>
-          </div>
+          <p className="text-xs sm:text-sm text-slate-500 mt-1">
+            Real-time cold storage temperature monitoring &amp; RFID blood unit tracking.
+          </p>
         </div>
 
-        {/* Demo Simulation Action Buttons (Shown when Demo Mode is Active) */}
-        {demoMode && (
-          <div className="mt-4 pt-4 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-3 text-xs">
-            <div className="flex items-center gap-1.5 text-slate-400">
-              <Zap className="h-3.5 w-3.5 text-amber-400" />
-              <span className="font-semibold text-slate-300">Quick Demo Controls:</span>
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Demo Mode Toggle */}
+          <button
+            onClick={() => setDemoMode(!demoMode)}
+            className={cn(
+              'flex items-center gap-2 px-3.5 py-1.5 rounded-xl border text-xs font-bold transition-all shadow-2xs select-none',
+              demoMode
+                ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                : 'border-slate-200 bg-slate-100 text-slate-600'
+            )}
+          >
+            {demoMode ? (
+              <>
+                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span>Demo IoT Simulation: ON</span>
+              </>
+            ) : (
+              <>
+                <Pause className="h-3.5 w-3.5" />
+                <span>Demo Simulation: PAUSED</span>
+              </>
+            )}
+          </button>
+
+          {/* Threshold Config Button */}
+          <Button size="xs" variant="outline" onClick={() => setShowConfigModal(true)}>
+            <Sliders className="h-3.5 w-3.5 mr-1" /> Prototype Thresholds
+          </Button>
+
+          {/* Hardware Guide Button */}
+          <Button size="xs" variant="primary" onClick={() => setShowHardwareGuideModal(true)}>
+            <Code2 className="h-3.5 w-3.5 mr-1" /> Hardware Setup Guide
+          </Button>
+        </div>
+      </div>
+
+      {/* Demo Actions Strip */}
+      {demoMode && (
+        <Card className="p-3.5 bg-amber-50/50 border-amber-200/80">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+            <div className="flex items-center gap-2 text-amber-800 font-bold">
+              <Zap className="h-4 w-4 text-amber-600" />
+              <span>Simulated Data Controls (Test without physical hardware):</span>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              <button
-                onClick={() => triggerSimulatedRfidScan('ENTERED')}
-                className="px-2.5 py-1 rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium transition-colors"
-              >
+              <Button size="xs" variant="outline" onClick={() => triggerSimulatedRfidScan('ENTERED')}>
                 + Simulate RFID Scan (ENTERED)
-              </button>
-
-              <button
-                onClick={() => triggerSimulatedRfidScan('DISPATCHED')}
-                className="px-2.5 py-1 rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium transition-colors"
-              >
+              </Button>
+              <Button size="xs" variant="outline" onClick={() => triggerSimulatedRfidScan('DISPATCHED')}>
                 - Simulate RFID Scan (DISPATCHED)
-              </button>
-
-              <button
-                onClick={triggerSimulatedTempSpike}
-                className="px-2.5 py-1 rounded-lg border border-red-500/30 bg-red-950/40 hover:bg-red-900/40 text-red-300 font-bold transition-colors"
-              >
-                🚨 Trigger Temp Spike Alert
-              </button>
+              </Button>
+              <Button size="xs" variant="danger" onClick={triggerSimulatedTempSpike}>
+                🚨 Trigger Temp Spike
+              </Button>
             </div>
           </div>
-        )}
-      </div>
+        </Card>
+      )}
 
       {/* IoT Sub-Navigation Tabs */}
-      <div className="flex items-center gap-1 border-b border-slate-200 overflow-x-auto pb-0.5">
+      <div className="flex items-center gap-1.5 border-b border-slate-200 overflow-x-auto pb-1">
         {[
           { id: 'overview', label: 'Overview', icon: <Layers className="h-4 w-4" /> },
-          { id: 'temp', label: '🌡️ Temperature Monitoring', icon: <Thermometer className="h-4 w-4" /> },
-          { id: 'devices', label: '📡 IoT Devices', icon: <Radio className="h-4 w-4" /> },
-          { id: 'rfid', label: '🏷️ RFID Blood Units', icon: <Cpu className="h-4 w-4" /> },
-          { id: 'logs', label: '📋 RFID Activity Logs', icon: <Activity className="h-4 w-4" /> },
-          { id: 'inventory', label: '🩸 Blood Inventory', icon: <Database className="h-4 w-4" /> },
+          { id: 'temp', label: 'Storage Temperature', icon: <Thermometer className="h-4 w-4" /> },
+          { id: 'devices', label: 'IoT Devices', icon: <Radio className="h-4 w-4" /> },
+          { id: 'rfid', label: 'RFID Units', icon: <Cpu className="h-4 w-4" /> },
+          { id: 'logs', label: 'Scan Logs', icon: <Activity className="h-4 w-4" /> },
+          { id: 'inventory', label: 'Stock Breakdown', icon: <Database className="h-4 w-4" /> },
           {
             id: 'alerts',
-            label: '🚨 IoT Alerts',
+            label: 'IoT Alerts',
             icon: <AlertTriangle className="h-4 w-4" />,
             badgeCount: unacknowledgedAlertsCount,
           },
@@ -648,16 +632,16 @@ export function SmartBloodBankIoT({ hospital }: SmartBloodBankIoTProps) {
               key={tab.id}
               onClick={() => setSubTab(tab.id as IoTSubTab)}
               className={cn(
-                'flex items-center gap-2 px-4 py-2.5 text-xs sm:text-sm font-bold border-b-2 transition-all whitespace-nowrap select-none',
+                'flex items-center gap-2 px-3.5 py-2 text-xs sm:text-sm font-bold border-b-2 transition-all whitespace-nowrap select-none',
                 isActive
-                  ? 'border-red-600 text-red-600 bg-red-50/50 rounded-t-xl'
+                  ? 'border-red-600 text-red-600 bg-red-50/60 rounded-t-lg'
                   : 'border-transparent text-slate-500 hover:text-slate-900 hover:border-slate-300'
               )}
             >
               {tab.icon}
               <span>{tab.label}</span>
               {tab.badgeCount !== undefined && tab.badgeCount > 0 && (
-                <span className="h-5 min-w-5 px-1.5 flex items-center justify-center rounded-full bg-red-600 text-white text-[10px] font-black">
+                <span className="h-4 min-w-4 px-1 flex items-center justify-center rounded-full bg-red-600 text-white text-[10px] font-bold">
                   {tab.badgeCount}
                 </span>
               )}
@@ -1260,42 +1244,92 @@ export function SmartBloodBankIoT({ hospital }: SmartBloodBankIoTProps) {
         </div>
       )}
 
-      {/* Modal: ESP32 Hardware Guide */}
+      {/* Modal: ESP32 Hardware Setup Guide */}
       {showHardwareGuideModal && (
         <Modal
           open
           onClose={() => setShowHardwareGuideModal(false)}
-          title="ESP32 IoT Setup Architecture Guide"
+          title="ESP32 Physical Hardware Connection Guide"
           maxWidth="max-w-2xl"
         >
           <div className="space-y-4 text-xs text-slate-700 leading-relaxed">
-            <p className="font-semibold text-slate-900">
-              To connect physical ESP32 hardware to BloodFlow:
-            </p>
+            <div className="rounded-xl bg-red-50 p-3 border border-red-200">
+              <h4 className="font-bold text-red-900 text-sm">Step-by-Step Hardware Wiring:</h4>
+              <p className="text-red-700 mt-1">
+                Connect your physical <strong>ESP32 NodeMCU board</strong> to the sensors as follows:
+              </p>
+            </div>
 
-            <div className="rounded-2xl border border-slate-800 bg-slate-950 p-4 text-slate-200 font-mono text-[11px]">
-              <p className="text-red-400 font-bold mb-2">// Sample ESP32 Arduino HTTP POST Payload</p>
-              <pre>{`POST /rest/v1/temperature_readings
-Host: gvwdrbrepbpmhjckdcyq.supabase.co
-Content-Type: application/json
-apikey: YOUR_SUPABASE_ANON_KEY
+            {/* Wiring Table */}
+            <div className="overflow-x-auto rounded-xl border border-slate-200">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-100 font-bold text-slate-700">
+                  <tr>
+                    <th className="p-2.5">Component</th>
+                    <th className="p-2.5">Sensor Pin</th>
+                    <th className="p-2.5">ESP32 Pin</th>
+                    <th className="p-2.5">Notes</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-slate-600">
+                  <tr>
+                    <td className="p-2.5 font-bold">DS18B20 Temp Sensor</td>
+                    <td className="p-2.5">VCC, GND, DATA</td>
+                    <td className="p-2.5 font-mono text-red-600 font-bold">GPIO 4</td>
+                    <td className="p-2.5">Requires 4.7kΩ pull-up resistor to 3.3V</td>
+                  </tr>
+                  <tr>
+                    <td className="p-2.5 font-bold">RC522 RFID Reader</td>
+                    <td className="p-2.5">SDA / SS</td>
+                    <td className="p-2.5 font-mono text-blue-600 font-bold">GPIO 5</td>
+                    <td className="p-2.5">SPI Chip Select</td>
+                  </tr>
+                  <tr>
+                    <td className="p-2.5 font-bold">RC522 RFID Reader</td>
+                    <td className="p-2.5">SCK / MOSI / MISO</td>
+                    <td className="p-2.5 font-mono text-blue-600 font-bold">GPIO 18 / 23 / 19</td>
+                    <td className="p-2.5">Standard ESP32 Hardware SPI</td>
+                  </tr>
+                  <tr>
+                    <td className="p-2.5 font-bold">RC522 RFID Reader</td>
+                    <td className="p-2.5">RST</td>
+                    <td className="p-2.5 font-mono text-blue-600 font-bold">GPIO 22</td>
+                    <td className="p-2.5">Reset Pin</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
 
-{
-  "device_id": "ESP32-001",
-  "storage_unit_id": "ST001",
-  "temperature": 4.2,
-  "status": "normal"
+            {/* Arduino Sketch Snippet */}
+            <div>
+              <h4 className="font-bold text-slate-900 mb-1.5">ESP32 C++ Code Snippet (Arduino IDE):</h4>
+              <div className="rounded-xl border border-slate-800 bg-slate-950 p-3.5 text-slate-200 font-mono text-[11px] overflow-x-auto">
+                <pre>{`#include <WiFi.h>
+#include <HTTPClient.h>
+
+const char* ssid = "YOUR_WIFI_SSID";
+const char* password = "YOUR_WIFI_PASSWORD";
+const char* supabaseUrl = "https://gvwdrbrepbpmhjckdcyq.supabase.co/rest/v1/temperature_readings";
+const char* anonKey = "YOUR_SUPABASE_ANON_KEY";
+
+void sendTemperature(float tempC) {
+  if (WiFi.status() == WL_CONNECTED) {
+    HTTPClient http;
+    http.begin(supabaseUrl);
+    http.addHeader("Content-Type", "application/json");
+    http.addHeader("apikey", anonKey);
+
+    String jsonPayload = "{\\"device_id\\":\\"ESP32-001\\",\\"temperature\\":" + String(tempC) + "}";
+    int httpResponseCode = http.POST(jsonPayload);
+    http.end();
+  }
 }`}</pre>
+              </div>
             </div>
 
-            <div className="rounded-xl bg-slate-100 p-3">
-              <h4 className="font-bold text-slate-900 mb-1">Physical Wiring Pinout:</h4>
-              <ul className="list-disc list-inside space-y-1 text-slate-600">
-                <td>DS18B20 Temp Sensor ➔ OneWire GPIO 4</td>
-                <td>RC522 RFID SS ➔ GPIO 5, SCK ➔ GPIO 18, MOSI ➔ GPIO 23, MISO ➔ GPIO 19</td>
-                <td>Wi-Fi Auto-Reconnect enabled in Arduino loop</td>
-              </ul>
-            </div>
+            <p className="text-slate-500 text-[11px]">
+              Once powered on, the ESP32 will transmit readings directly into Supabase tables via REST API and automatically trigger real-time updates in BloodFlow!
+            </p>
           </div>
         </Modal>
       )}
