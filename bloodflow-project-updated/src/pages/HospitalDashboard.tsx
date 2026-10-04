@@ -20,6 +20,7 @@ import {
   ArrowUpRight,
   MessageSquare,
   Award,
+  Cpu,
 } from 'lucide-react';
 import { DashboardLayout, PageHeader, StatCard } from '@/components/DashboardLayout';
 import { Button, Input, Select, Card, Badge, Modal, EmptyState, Skeleton, ConfirmDialog } from '@/components/ui';
@@ -38,8 +39,9 @@ import {
 import { useLanguage } from '@/lib/i18n';
 import { RewardManagement } from '@/components/RewardManagement';
 import { InteractiveEmergencyMap } from '@/components/InteractiveEmergencyMap';
+import { SmartBloodBankIoT } from '@/components/SmartBloodBankIoT';
 
-type View = 'overview' | 'donors' | 'inventory' | 'emergency' | 'settings' | 'rewards';
+type View = 'overview' | 'donors' | 'inventory' | 'emergency' | 'settings' | 'rewards' | 'iot';
 
 export function HospitalDashboard() {
   const { profile } = useAuth();
@@ -97,6 +99,7 @@ export function HospitalDashboard() {
     { id: 'donors', label: tr('Incoming Donors'), icon: <Users className="h-4 w-4" /> },
     { id: 'inventory', label: 'Blood Inventory', icon: <Droplet className="h-4 w-4" /> },
     { id: 'emergency', label: 'Emergency Requests', icon: <AlertTriangle className="h-4 w-4" /> },
+    { id: 'iot', label: 'Smart Blood Bank IoT', icon: <Cpu className="h-4 w-4" /> },
     { id: 'settings', label: tr('Hospital Settings'), icon: <Building2 className="h-4 w-4" /> },
     { id: 'rewards', label: 'Rewards', icon: <Award className="h-4 w-4" /> },
   ];
@@ -469,6 +472,8 @@ export function HospitalDashboard() {
       )}
 
       {view === 'settings' && <HospitalSettings hospital={hospital} onUpdated={loadData} />}
+
+      {view === 'iot' && <SmartBloodBankIoT hospital={hospital} />}
 
       {view === 'rewards' && (
         <>

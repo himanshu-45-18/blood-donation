@@ -134,3 +134,91 @@ export type EmergencyCall = {
 };
 
 export const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'] as const;
+
+// Smart Blood Bank IoT Types
+export type StorageUnitStatus = 'normal' | 'warning' | 'critical' | 'offline';
+
+export type StorageUnit = {
+  id: string;
+  storage_code: string;
+  name: string;
+  location: string;
+  status: StorageUnitStatus;
+  current_temperature: number;
+  min_temp_threshold: number;
+  max_temp_threshold: number;
+  hospital_id: string | null;
+  created_at: string;
+};
+
+export type IoTDevice = {
+  id: string;
+  device_id: string;
+  storage_unit_id: string | null;
+  device_type: string;
+  status: 'online' | 'offline';
+  wifi_status: 'connected' | 'disconnected' | 'weak';
+  last_seen: string;
+  last_temperature: number;
+  firmware_version: string;
+  ip_address?: string;
+  created_at: string;
+  storage_unit?: StorageUnit;
+};
+
+export type TemperatureReading = {
+  id: string;
+  device_id: string;
+  storage_unit_id: string;
+  temperature: number;
+  status: 'normal' | 'warning' | 'critical';
+  recorded_at: string;
+};
+
+export type RFIDBloodUnit = {
+  id: string;
+  blood_unit_code: string;
+  rfid_uid: string;
+  blood_group: string;
+  storage_unit_id: string | null;
+  hospital_id: string | null;
+  status: 'AVAILABLE' | 'DISPATCHED' | 'RESERVED' | 'EXPIRED';
+  volume_ml: number;
+  collection_date: string;
+  expiry_date: string;
+  last_scanned_at: string;
+  created_at: string;
+  storage_unit?: StorageUnit;
+};
+
+export type RFIDEventAction = 'ENTERED' | 'DISPATCHED' | 'MOVED' | 'SCAN_FAILED' | 'UNKNOWN_TAG';
+
+export type RFIDEvent = {
+  id: string;
+  rfid_uid: string;
+  blood_unit_id: string | null;
+  blood_unit_code: string | null;
+  blood_group: string | null;
+  storage_unit_id: string;
+  action: RFIDEventAction;
+  result: 'SUCCESS' | 'FAILED' | 'FLAGGED';
+  scanned_at: string;
+  storage_unit?: StorageUnit;
+};
+
+export type IoTAlertSeverity = 'CRITICAL' | 'WARNING' | 'INFO';
+
+export type IoTAlert = {
+  id: string;
+  device_id: string | null;
+  storage_unit_id: string | null;
+  alert_type: string;
+  severity: IoTAlertSeverity;
+  message: string;
+  acknowledged: boolean;
+  acknowledged_at: string | null;
+  acknowledged_by: string | null;
+  created_at: string;
+  storage_unit?: StorageUnit;
+};
+
