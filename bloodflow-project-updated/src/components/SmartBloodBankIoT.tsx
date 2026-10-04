@@ -41,203 +41,11 @@ interface SmartBloodBankIoTProps {
   hospital: Hospital | null;
 }
 
-// Optional Demo Dataset (Only loaded when user explicitly turns ON Demo Mode)
-const DEMO_STORAGE_UNITS: StorageUnit[] = [
-  {
-    id: 'unit-st001',
-    storage_code: 'ST001',
-    name: 'Cold Vault A (Whole Blood)',
-    location: 'Blood Bank Wing A - Room 101',
-    status: 'normal',
-    current_temperature: 4.2,
-    min_temp_threshold: 2.0,
-    max_temp_threshold: 6.0,
-    hospital_id: null,
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: 'unit-st002',
-    storage_code: 'ST002',
-    name: 'Cold Vault B (Plasma & RBC)',
-    location: 'Blood Bank Wing A - Room 102',
-    status: 'warning',
-    current_temperature: 7.4,
-    min_temp_threshold: 2.0,
-    max_temp_threshold: 6.0,
-    hospital_id: null,
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: 'unit-st003',
-    storage_code: 'ST003',
-    name: 'Emergency Unit C',
-    location: 'ICU Emergency Ward - Floor 2',
-    status: 'critical',
-    current_temperature: 11.8,
-    min_temp_threshold: 2.0,
-    max_temp_threshold: 6.0,
-    hospital_id: null,
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: 'unit-st004',
-    storage_code: 'ST004',
-    name: 'Reserve Storage D',
-    location: 'Sub-Basement Storage',
-    status: 'offline',
-    current_temperature: 4.0,
-    min_temp_threshold: 2.0,
-    max_temp_threshold: 6.0,
-    hospital_id: null,
-    created_at: new Date().toISOString(),
-  },
-];
-
-const DEMO_DEVICES: IoTDevice[] = [
-  {
-    id: 'dev-001',
-    device_id: 'ESP32-001',
-    storage_unit_id: 'unit-st001',
-    device_type: 'ESP32_DS18B20_RC522',
-    status: 'online',
-    wifi_status: 'connected',
-    last_seen: new Date(Date.now() - 5000).toISOString(),
-    last_temperature: 4.2,
-    firmware_version: 'v1.4.2-iot',
-    ip_address: '192.168.1.105',
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: 'dev-002',
-    device_id: 'ESP32-002',
-    storage_unit_id: 'unit-st002',
-    device_type: 'ESP32_DS18B20_RC522',
-    status: 'online',
-    wifi_status: 'connected',
-    last_seen: new Date(Date.now() - 12000).toISOString(),
-    last_temperature: 7.4,
-    firmware_version: 'v1.4.2-iot',
-    ip_address: '192.168.1.106',
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: 'dev-003',
-    device_id: 'ESP32-003',
-    storage_unit_id: 'unit-st003',
-    device_type: 'ESP32_DS18B20_RC522',
-    status: 'online',
-    wifi_status: 'weak',
-    last_seen: new Date(Date.now() - 25000).toISOString(),
-    last_temperature: 11.8,
-    firmware_version: 'v1.4.2-iot',
-    ip_address: '192.168.1.107',
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: 'dev-004',
-    device_id: 'ESP32-004',
-    storage_unit_id: 'unit-st004',
-    device_type: 'ESP32_DS18B20_RC522',
-    status: 'offline',
-    wifi_status: 'disconnected',
-    last_seen: new Date(Date.now() - 8 * 60 * 1000).toISOString(),
-    last_temperature: 4.0,
-    firmware_version: 'v1.4.0-iot',
-    ip_address: '192.168.1.108',
-    created_at: new Date().toISOString(),
-  },
-];
-
-const DEMO_BLOOD_UNITS: RFIDBloodUnit[] = [
-  {
-    id: 'bu-001',
-    blood_unit_code: 'BF-001',
-    rfid_uid: 'A3-72-19-8F',
-    blood_group: 'O+',
-    storage_unit_id: 'unit-st001',
-    hospital_id: null,
-    status: 'AVAILABLE',
-    volume_ml: 350,
-    collection_date: new Date(Date.now() - 5 * 86400000).toISOString().split('T')[0],
-    expiry_date: new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0],
-    last_scanned_at: new Date(Date.now() - 10 * 60000).toISOString(),
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: 'bu-002',
-    blood_unit_code: 'BF-002',
-    rfid_uid: 'B2-91-44-7C',
-    blood_group: 'A+',
-    storage_unit_id: 'unit-st001',
-    hospital_id: null,
-    status: 'AVAILABLE',
-    volume_ml: 450,
-    collection_date: new Date(Date.now() - 3 * 86400000).toISOString().split('T')[0],
-    expiry_date: new Date(Date.now() + 32 * 86400000).toISOString().split('T')[0],
-    last_scanned_at: new Date(Date.now() - 25 * 60000).toISOString(),
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: 'bu-003',
-    blood_unit_code: 'BF-003',
-    rfid_uid: 'C1-82-32-6D',
-    blood_group: 'B+',
-    storage_unit_id: 'unit-st002',
-    hospital_id: null,
-    status: 'DISPATCHED',
-    volume_ml: 350,
-    collection_date: new Date(Date.now() - 8 * 86400000).toISOString().split('T')[0],
-    expiry_date: new Date(Date.now() + 27 * 86400000).toISOString().split('T')[0],
-    last_scanned_at: new Date(Date.now() - 40 * 60000).toISOString(),
-    created_at: new Date().toISOString(),
-  },
-];
-
-const DEMO_RFID_EVENTS: RFIDEvent[] = [
-  {
-    id: 'evt-101',
-    rfid_uid: 'A3-72-19-8F',
-    blood_unit_id: 'bu-001',
-    blood_unit_code: 'BF-001',
-    blood_group: 'O+',
-    storage_unit_id: 'unit-st001',
-    action: 'ENTERED',
-    result: 'SUCCESS',
-    scanned_at: new Date(Date.now() - 10 * 60000).toISOString(),
-  },
-  {
-    id: 'evt-102',
-    rfid_uid: 'B2-91-44-7C',
-    blood_unit_id: 'bu-002',
-    blood_unit_code: 'BF-002',
-    blood_group: 'A+',
-    storage_unit_id: 'unit-st001',
-    action: 'ENTERED',
-    result: 'SUCCESS',
-    scanned_at: new Date(Date.now() - 25 * 60000).toISOString(),
-  },
-];
-
-const DEMO_ALERTS: IoTAlert[] = [
-  {
-    id: 'alt-001',
-    device_id: 'ESP32-003',
-    storage_unit_id: 'unit-st003',
-    alert_type: 'temperature_exceeded',
-    severity: 'CRITICAL',
-    message: 'Storage Unit ST003 temperature is 11.8°C (Exceeds safe range 2.0°C – 6.0°C).',
-    acknowledged: false,
-    acknowledged_at: null,
-    acknowledged_by: null,
-    created_at: new Date(Date.now() - 15 * 60000).toISOString(),
-  },
-];
-
 export function SmartBloodBankIoT({ hospital }: SmartBloodBankIoTProps) {
   const { profile } = useAuth();
   const [subTab, setSubTab] = useState<IoTSubTab>('overview');
 
-  // Core IoT State (Empty by default, fetches real records from Supabase)
+  // Core IoT State (Reads from Supabase)
   const [storageUnits, setStorageUnits] = useState<StorageUnit[]>([]);
   const [devices, setDevices] = useState<IoTDevice[]>([]);
   const [bloodUnits, setBloodUnits] = useState<RFIDBloodUnit[]>([]);
@@ -245,8 +53,6 @@ export function SmartBloodBankIoT({ hospital }: SmartBloodBankIoTProps) {
   const [alerts, setAlerts] = useState<IoTAlert[]>([]);
   const [tempHistory, setTempHistory] = useState<{ time: string; ST001: number; ST002: number; ST003: number }[]>([]);
 
-  // Demo Simulation State (Default: false)
-  const [demoMode, setDemoMode] = useState(false);
   const [selectedTimeRange, setSelectedTimeRange] = useState<'1h' | '6h' | '24h'>('1h');
   const [selectedDeviceModal, setSelectedDeviceModal] = useState<IoTDevice | null>(null);
   const [showHardwareGuideModal, setShowHardwareGuideModal] = useState(false);
@@ -260,23 +66,7 @@ export function SmartBloodBankIoT({ hospital }: SmartBloodBankIoTProps) {
   const [minThreshold, setMinThreshold] = useState(2.0);
   const [maxThreshold, setMaxThreshold] = useState(6.0);
 
-  // Initialize temperature graph history
-  useEffect(() => {
-    const history = [];
-    const now = Date.now();
-    for (let i = 12; i >= 0; i--) {
-      const t = new Date(now - i * 5 * 60000);
-      history.push({
-        time: t.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        ST001: Number((4.0 + Math.sin(i) * 0.3).toFixed(1)),
-        ST002: Number((6.8 + Math.cos(i) * 0.5).toFixed(1)),
-        ST003: Number((10.5 + Math.sin(i * 0.8) * 1.2).toFixed(1)),
-      });
-    }
-    setTempHistory(history);
-  }, []);
-
-  // Fetch real data from Supabase if connected
+  // Fetch real data from Supabase
   const fetchSupabaseIoTData = useCallback(async () => {
     try {
       const [unitsRes, devRes, bloodRes, rfidRes, alertRes] = await Promise.all([
@@ -287,13 +77,13 @@ export function SmartBloodBankIoT({ hospital }: SmartBloodBankIoTProps) {
         supabase.from('iot_alerts').select('*').order('created_at', { ascending: false }),
       ]);
 
-      if (unitsRes.data && unitsRes.data.length > 0) setStorageUnits(unitsRes.data);
-      if (devRes.data && devRes.data.length > 0) setDevices(devRes.data);
-      if (bloodRes.data && bloodRes.data.length > 0) setBloodUnits(bloodRes.data);
-      if (rfidRes.data && rfidRes.data.length > 0) setRfidEvents(rfidRes.data);
-      if (alertRes.data && alertRes.data.length > 0) setAlerts(alertRes.data);
-    } catch {
-      // Fallback to local state if tables are not populated yet
+      if (unitsRes.data) setStorageUnits(unitsRes.data);
+      if (devRes.data) setDevices(devRes.data);
+      if (bloodRes.data) setBloodUnits(bloodRes.data);
+      if (rfidRes.data) setRfidEvents(rfidRes.data);
+      if (alertRes.data) setAlerts(alertRes.data);
+    } catch (err) {
+      console.error('Error fetching Supabase IoT data:', err);
     }
   }, []);
 
@@ -315,138 +105,16 @@ export function SmartBloodBankIoT({ hospital }: SmartBloodBankIoTProps) {
     };
   }, [fetchSupabaseIoTData]);
 
-  // Demo IoT Simulation Engine (runs when demoMode is active)
-  useEffect(() => {
-    if (!demoMode) return;
-
-    const interval = setInterval(() => {
-      // 1. Simulate minor temperature fluctuations
-      setStorageUnits((prevUnits) =>
-        prevUnits.map((unit) => {
-          if (unit.status === 'offline') return unit;
-          const fluctuation = (Math.random() - 0.5) * 0.4;
-          const newTemp = Number(Math.max(1.0, Math.min(16.0, unit.current_temperature + fluctuation)).toFixed(1));
-          
-          let newStatus: StorageUnit['status'] = 'normal';
-          if (newTemp > maxThreshold + 3.0 || newTemp < minThreshold - 1.0) {
-            newStatus = 'critical';
-          } else if (newTemp > maxThreshold || newTemp < minThreshold) {
-            newStatus = 'warning';
-          }
-
-          return {
-            ...unit,
-            current_temperature: newTemp,
-            status: newStatus,
-          };
-        })
-      );
-
-      // 2. Append history point for chart
-      setTempHistory((prev) => {
-        const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        const last = prev[prev.length - 1] || { ST001: 4.2, ST002: 7.4, ST003: 11.8 };
-        const newPoint = {
-          time: timeStr,
-          ST001: Number((last.ST001 + (Math.random() - 0.5) * 0.2).toFixed(1)),
-          ST002: Number((last.ST002 + (Math.random() - 0.5) * 0.3).toFixed(1)),
-          ST003: Number((last.ST003 + (Math.random() - 0.5) * 0.4).toFixed(1)),
-        };
-        return [...prev.slice(-15), newPoint];
-      });
-
-      // 3. Update device heartbeats
-      setDevices((prevDevs) =>
-        prevDevs.map((d) => (d.status === 'online' ? { ...d, last_seen: new Date().toISOString() } : d))
-      );
-    }, 4000);
-
-    return () => clearInterval(interval);
-  }, [demoMode, minThreshold, maxThreshold]);
-
-  // Demo Actions to manually trigger events
-  function triggerSimulatedRfidScan(action: 'ENTERED' | 'DISPATCHED') {
-    const randomGroup = BLOOD_GROUPS[Math.floor(Math.random() * BLOOD_GROUPS.length)];
-    const randomUid = `${Math.floor(Math.random() * 89 + 10).toString(16).toUpperCase()}-${Math.floor(Math.random() * 89 + 10).toString(16).toUpperCase()}-${Math.floor(Math.random() * 89 + 10).toString(16).toUpperCase()}-${Math.floor(Math.random() * 89 + 10).toString(16).toUpperCase()}`;
-    const newCode = `BF-${Math.floor(Math.random() * 900 + 100)}`;
-
-    const newEvent: RFIDEvent = {
-      id: `evt-sim-${Date.now()}`,
-      rfid_uid: randomUid,
-      blood_unit_id: `bu-sim-${Date.now()}`,
-      blood_unit_code: newCode,
-      blood_group: randomGroup,
-      storage_unit_id: 'unit-st001',
-      action,
-      result: 'SUCCESS',
-      scanned_at: new Date().toISOString(),
-    };
-
-    setRfidEvents((prev) => [newEvent, ...prev]);
-
-    if (action === 'ENTERED') {
-      const newUnit: RFIDBloodUnit = {
-        id: `bu-sim-${Date.now()}`,
-        blood_unit_code: newCode,
-        rfid_uid: randomUid,
-        blood_group: randomGroup,
-        storage_unit_id: 'unit-st001',
-        hospital_id: hospital?.id || null,
-        status: 'AVAILABLE',
-        volume_ml: 350,
-        collection_date: new Date().toISOString().split('T')[0],
-        expiry_date: new Date(Date.now() + 35 * 86400000).toISOString().split('T')[0],
-        last_scanned_at: new Date().toISOString(),
-        created_at: new Date().toISOString(),
-      };
-      setBloodUnits((prev) => [newUnit, ...prev]);
-    } else {
-      setBloodUnits((prev) =>
-        prev.map((unit, idx) => (idx === 0 ? { ...unit, status: 'DISPATCHED' } : unit))
-      );
-    }
-  }
-
-  function triggerSimulatedTempSpike() {
-    setStorageUnits((prev) =>
-      prev.map((u) => (u.storage_code === 'ST001' ? { ...u, current_temperature: 13.5, status: 'critical' } : u))
-    );
-
-    const newAlert: IoTAlert = {
-      id: `alt-sim-${Date.now()}`,
-      device_id: 'ESP32-001',
-      storage_unit_id: 'unit-st001',
-      alert_type: 'temperature_exceeded',
-      severity: 'CRITICAL',
-      message: 'CRITICAL: Cold Vault A (ST001) temperature spiked to 13.5°C! Immediate medical review required.',
-      acknowledged: false,
-      acknowledged_at: null,
-      acknowledged_by: null,
-      created_at: new Date().toISOString(),
-    };
-
-    setAlerts((prev) => [newAlert, ...prev]);
-  }
-
-  function acknowledgeAlert(alertId: string) {
+  async function acknowledgeAlert(alertId: string) {
     setAlerts((prev) =>
       prev.map((a) =>
         a.id === alertId ? { ...a, acknowledged: true, acknowledged_at: new Date().toISOString() } : a
       )
     );
-  }
-
-  function toggleDemoMode() {
-    if (!demoMode) {
-      setDemoMode(true);
-      setStorageUnits(DEMO_STORAGE_UNITS);
-      setDevices(DEMO_DEVICES);
-      setBloodUnits(DEMO_BLOOD_UNITS);
-      setRfidEvents(DEMO_RFID_EVENTS);
-      setAlerts(DEMO_ALERTS);
-    } else {
-      setDemoMode(false);
-      fetchSupabaseIoTData();
+    try {
+      await supabase.from('iot_alerts').update({ acknowledged: true, acknowledged_at: new Date().toISOString() }).eq('id', alertId);
+    } catch {
+      // ignore
     }
   }
 
@@ -491,29 +159,6 @@ export function SmartBloodBankIoT({ hospital }: SmartBloodBankIoTProps) {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {/* Demo Mode Toggle */}
-          <button
-            onClick={toggleDemoMode}
-            className={cn(
-              'flex items-center gap-2 px-3.5 py-1.5 rounded-xl border text-xs font-bold transition-all shadow-2xs select-none',
-              demoMode
-                ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                : 'border-slate-200 bg-slate-100 text-slate-600'
-            )}
-          >
-            {demoMode ? (
-              <>
-                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span>Demo IoT Simulation: ON</span>
-              </>
-            ) : (
-              <>
-                <Pause className="h-3.5 w-3.5" />
-                <span>Demo Simulation: PAUSED</span>
-              </>
-            )}
-          </button>
-
           {/* Threshold Config Button */}
           <Button size="xs" variant="outline" onClick={() => setShowConfigModal(true)}>
             <Sliders className="h-3.5 w-3.5 mr-1" /> Prototype Thresholds
@@ -525,30 +170,6 @@ export function SmartBloodBankIoT({ hospital }: SmartBloodBankIoTProps) {
           </Button>
         </div>
       </div>
-
-      {/* Demo Actions Strip */}
-      {demoMode && (
-        <Card className="p-3.5 bg-amber-50/50 border-amber-200/80">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
-            <div className="flex items-center gap-2 text-amber-800 font-bold">
-              <Zap className="h-4 w-4 text-amber-600" />
-              <span>Simulated Data Controls (Test without physical hardware):</span>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <Button size="xs" variant="outline" onClick={() => triggerSimulatedRfidScan('ENTERED')}>
-                + Simulate RFID Scan (ENTERED)
-              </Button>
-              <Button size="xs" variant="outline" onClick={() => triggerSimulatedRfidScan('DISPATCHED')}>
-                - Simulate RFID Scan (DISPATCHED)
-              </Button>
-              <Button size="xs" variant="danger" onClick={triggerSimulatedTempSpike}>
-                🚨 Trigger Temp Spike
-              </Button>
-            </div>
-          </div>
-        </Card>
-      )}
 
       {/* IoT Sub-Navigation Tabs */}
       <div className="flex items-center gap-1.5 border-b border-slate-200 overflow-x-auto pb-1">
