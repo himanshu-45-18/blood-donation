@@ -41,8 +41,8 @@ interface SmartBloodBankIoTProps {
   hospital: Hospital | null;
 }
 
-// Initial realistic fallback/demo dataset
-const INITIAL_STORAGE_UNITS: StorageUnit[] = [
+// Optional Demo Dataset (Only loaded when user explicitly turns ON Demo Mode)
+const DEMO_STORAGE_UNITS: StorageUnit[] = [
   {
     id: 'unit-st001',
     storage_code: 'ST001',
@@ -93,7 +93,7 @@ const INITIAL_STORAGE_UNITS: StorageUnit[] = [
   },
 ];
 
-const INITIAL_DEVICES: IoTDevice[] = [
+const DEMO_DEVICES: IoTDevice[] = [
   {
     id: 'dev-001',
     device_id: 'ESP32-001',
@@ -148,7 +148,7 @@ const INITIAL_DEVICES: IoTDevice[] = [
   },
 ];
 
-const INITIAL_BLOOD_UNITS: RFIDBloodUnit[] = [
+const DEMO_BLOOD_UNITS: RFIDBloodUnit[] = [
   {
     id: 'bu-001',
     blood_unit_code: 'BF-001',
@@ -191,37 +191,9 @@ const INITIAL_BLOOD_UNITS: RFIDBloodUnit[] = [
     last_scanned_at: new Date(Date.now() - 40 * 60000).toISOString(),
     created_at: new Date().toISOString(),
   },
-  {
-    id: 'bu-004',
-    blood_unit_code: 'BF-004',
-    rfid_uid: 'D4-65-88-2E',
-    blood_group: 'O-',
-    storage_unit_id: 'unit-st001',
-    hospital_id: null,
-    status: 'RESERVED',
-    volume_ml: 350,
-    collection_date: new Date(Date.now() - 2 * 86400000).toISOString().split('T')[0],
-    expiry_date: new Date(Date.now() + 33 * 86400000).toISOString().split('T')[0],
-    last_scanned_at: new Date(Date.now() - 5 * 60000).toISOString(),
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: 'bu-005',
-    blood_unit_code: 'BF-005',
-    rfid_uid: 'E5-12-99-3A',
-    blood_group: 'AB+',
-    storage_unit_id: 'unit-st002',
-    hospital_id: null,
-    status: 'AVAILABLE',
-    volume_ml: 400,
-    collection_date: new Date(Date.now() - 4 * 86400000).toISOString().split('T')[0],
-    expiry_date: new Date(Date.now() + 31 * 86400000).toISOString().split('T')[0],
-    last_scanned_at: new Date(Date.now() - 15 * 60000).toISOString(),
-    created_at: new Date().toISOString(),
-  },
 ];
 
-const INITIAL_RFID_EVENTS: RFIDEvent[] = [
+const DEMO_RFID_EVENTS: RFIDEvent[] = [
   {
     id: 'evt-101',
     rfid_uid: 'A3-72-19-8F',
@@ -244,66 +216,20 @@ const INITIAL_RFID_EVENTS: RFIDEvent[] = [
     result: 'SUCCESS',
     scanned_at: new Date(Date.now() - 25 * 60000).toISOString(),
   },
-  {
-    id: 'evt-103',
-    rfid_uid: 'C1-82-32-6D',
-    blood_unit_id: 'bu-003',
-    blood_unit_code: 'BF-003',
-    blood_group: 'B+',
-    storage_unit_id: 'unit-st002',
-    action: 'DISPATCHED',
-    result: 'SUCCESS',
-    scanned_at: new Date(Date.now() - 40 * 60000).toISOString(),
-  },
-  {
-    id: 'evt-104',
-    rfid_uid: 'FF-99-88-77',
-    blood_unit_id: null,
-    blood_unit_code: 'UNKNOWN',
-    blood_group: 'N/A',
-    storage_unit_id: 'unit-st003',
-    action: 'UNKNOWN_TAG',
-    result: 'FLAGGED',
-    scanned_at: new Date(Date.now() - 2 * 3600000).toISOString(),
-  },
 ];
 
-const INITIAL_ALERTS: IoTAlert[] = [
+const DEMO_ALERTS: IoTAlert[] = [
   {
     id: 'alt-001',
     device_id: 'ESP32-003',
     storage_unit_id: 'unit-st003',
     alert_type: 'temperature_exceeded',
     severity: 'CRITICAL',
-    message: 'Storage Unit ST003 temperature is 11.8°C (Exceeds safe range 2.0°C – 6.0°C). Immediate action required.',
+    message: 'Storage Unit ST003 temperature is 11.8°C (Exceeds safe range 2.0°C – 6.0°C).',
     acknowledged: false,
     acknowledged_at: null,
     acknowledged_by: null,
     created_at: new Date(Date.now() - 15 * 60000).toISOString(),
-  },
-  {
-    id: 'alt-002',
-    device_id: 'ESP32-002',
-    storage_unit_id: 'unit-st002',
-    alert_type: 'temperature_warning',
-    severity: 'WARNING',
-    message: 'Storage Unit ST002 temperature warning at 7.4°C. Check door seal.',
-    acknowledged: false,
-    acknowledged_at: null,
-    acknowledged_by: null,
-    created_at: new Date(Date.now() - 45 * 60000).toISOString(),
-  },
-  {
-    id: 'alt-003',
-    device_id: 'ESP32-004',
-    storage_unit_id: 'unit-st004',
-    alert_type: 'esp32_offline',
-    severity: 'WARNING',
-    message: 'ESP32-004 has not sent a heartbeat signal for over 8 minutes.',
-    acknowledged: true,
-    acknowledged_at: new Date(Date.now() - 5 * 60000).toISOString(),
-    acknowledged_by: null,
-    created_at: new Date(Date.now() - 120 * 60000).toISOString(),
   },
 ];
 
@@ -311,16 +237,16 @@ export function SmartBloodBankIoT({ hospital }: SmartBloodBankIoTProps) {
   const { profile } = useAuth();
   const [subTab, setSubTab] = useState<IoTSubTab>('overview');
 
-  // Core IoT State
-  const [storageUnits, setStorageUnits] = useState<StorageUnit[]>(INITIAL_STORAGE_UNITS);
-  const [devices, setDevices] = useState<IoTDevice[]>(INITIAL_DEVICES);
-  const [bloodUnits, setBloodUnits] = useState<RFIDBloodUnit[]>(INITIAL_BLOOD_UNITS);
-  const [rfidEvents, setRfidEvents] = useState<RFIDEvent[]>(INITIAL_RFID_EVENTS);
-  const [alerts, setAlerts] = useState<IoTAlert[]>(INITIAL_ALERTS);
+  // Core IoT State (Empty by default, fetches real records from Supabase)
+  const [storageUnits, setStorageUnits] = useState<StorageUnit[]>([]);
+  const [devices, setDevices] = useState<IoTDevice[]>([]);
+  const [bloodUnits, setBloodUnits] = useState<RFIDBloodUnit[]>([]);
+  const [rfidEvents, setRfidEvents] = useState<RFIDEvent[]>([]);
+  const [alerts, setAlerts] = useState<IoTAlert[]>([]);
   const [tempHistory, setTempHistory] = useState<{ time: string; ST001: number; ST002: number; ST003: number }[]>([]);
 
-  // Demo Simulation State
-  const [demoMode, setDemoMode] = useState(true);
+  // Demo Simulation State (Default: false)
+  const [demoMode, setDemoMode] = useState(false);
   const [selectedTimeRange, setSelectedTimeRange] = useState<'1h' | '6h' | '24h'>('1h');
   const [selectedDeviceModal, setSelectedDeviceModal] = useState<IoTDevice | null>(null);
   const [showHardwareGuideModal, setShowHardwareGuideModal] = useState(false);
@@ -510,6 +436,20 @@ export function SmartBloodBankIoT({ hospital }: SmartBloodBankIoTProps) {
     );
   }
 
+  function toggleDemoMode() {
+    if (!demoMode) {
+      setDemoMode(true);
+      setStorageUnits(DEMO_STORAGE_UNITS);
+      setDevices(DEMO_DEVICES);
+      setBloodUnits(DEMO_BLOOD_UNITS);
+      setRfidEvents(DEMO_RFID_EVENTS);
+      setAlerts(DEMO_ALERTS);
+    } else {
+      setDemoMode(false);
+      fetchSupabaseIoTData();
+    }
+  }
+
   // Summary Metrics calculations
   const onlineUnitsCount = storageUnits.filter((u) => u.status !== 'offline').length;
   const offlineUnitsCount = storageUnits.filter((u) => u.status === 'offline').length;
@@ -553,7 +493,7 @@ export function SmartBloodBankIoT({ hospital }: SmartBloodBankIoTProps) {
         <div className="flex flex-wrap items-center gap-2">
           {/* Demo Mode Toggle */}
           <button
-            onClick={() => setDemoMode(!demoMode)}
+            onClick={toggleDemoMode}
             className={cn(
               'flex items-center gap-2 px-3.5 py-1.5 rounded-xl border text-xs font-bold transition-all shadow-2xs select-none',
               demoMode
