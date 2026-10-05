@@ -587,7 +587,7 @@ Deno.serve(async (req: Request) => {
         payload.toPhone ||
         Deno.env.get("FIRE_CALL_TO") ||
         Deno.env.get("TWILIO_TO_1") ||
-        Deno.env.get("TWILIO_TEST_TO_NUMBER")
+        "+919373984482"
       );
 
       const fromPhone = normalizeFromPhoneNumber(
@@ -596,7 +596,7 @@ Deno.serve(async (req: Request) => {
         Deno.env.get("FIRE_CALL_FROM") ||
         (toPhone ? getTwilioFromForRecipient(toPhone) : null) ||
         Deno.env.get("TWILIO_FROM_1") ||
-        Deno.env.get("TWILIO_FROM_NUMBER")
+        "+17372583742"
       );
 
       if (!accountSid || !authToken || !fromPhone || !toPhone) {

@@ -64,7 +64,7 @@ export function SmartBloodBankIoT({ hospital }: SmartBloodBankIoTProps) {
   const [emergencyCallStatus, setEmergencyCallStatus] = useState<'Ready' | 'Calling...' | 'Call Initiated' | 'Call Failed'>('Ready');
   const [emergencyErrorMessage, setEmergencyErrorMessage] = useState<string | null>(null);
   const [fireCallToPhone, setFireCallToPhone] = useState<string>(() => {
-    return localStorage.getItem('BLOODFLOW_FIRE_CALL_TO') || import.meta.env.VITE_FIRE_CALL_TO || '';
+    return localStorage.getItem('BLOODFLOW_FIRE_CALL_TO') || import.meta.env.VITE_FIRE_CALL_TO || '+919373984482';
   });
   const [showPhoneSettingsModal, setShowPhoneSettingsModal] = useState(false);
 
@@ -187,22 +187,21 @@ export function SmartBloodBankIoT({ hospital }: SmartBloodBankIoTProps) {
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData?.session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY;
       
-      const targetPhone = fireCallToPhone.trim() || localStorage.getItem('BLOODFLOW_FIRE_CALL_TO') || import.meta.env.VITE_FIRE_CALL_TO;
+      const targetPhone = fireCallToPhone.trim() || localStorage.getItem('BLOODFLOW_FIRE_CALL_TO') || import.meta.env.VITE_FIRE_CALL_TO || '+919373984482';
 
       const callPayload: Record<string, unknown> = {
         testTwilio: true,
         mode: 'call',
         action: 'fire_emergency',
+        fromNumber: '+17372583742',
+        fromPhone: '+17372583742',
+        toNumber: targetPhone,
+        toPhone: targetPhone,
         device_id: 'BLOOD-BANK-01',
         source: 'web_button',
         emergency_type: 'FIRE',
         message: 'Fire emergency button activated from Doctor Dashboard Web UI',
       };
-
-      if (targetPhone) {
-        callPayload.toNumber = targetPhone;
-        callPayload.toPhone = targetPhone;
-      }
 
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/emergency-call?action=fire_emergency`, {
         method: 'POST',
