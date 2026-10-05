@@ -383,7 +383,37 @@ Deno.serve(async (req: Request) => {
       );
 
     /* =====================================================
-       1. TWILIO / PLIVO ANSWER
+       1. FIRE EMERGENCY ANSWER TWIML HANDLER
+    ===================================================== */
+
+    if (
+      action === "fire_emergency_answer" ||
+      action === "fire_answer" ||
+      url.searchParams.get("type") === "fire"
+    ) {
+      const xmlResponse =
+        `<?xml version="1.0" encoding="UTF-8"?>\n` +
+        `<Response>\n` +
+        `  <Pause length="1"/>\n` +
+        `  <Say voice="Polly.Aditi" language="en-IN">Emergency alert from BloodFlow. A fire or emergency button has been activated at Blood Bank Unit 01. Please respond immediately.</Say>\n` +
+        `  <Pause length="1.5"/>\n` +
+        `  <Say voice="Polly.Aditi" language="hi-IN">ब्लडफ्लो से आपातकालीन चेतावनी। ब्लड बैंक यूनिट 01 पर एक आग या आपातकालीन बटन सक्रिय किया गया है। कृपया तुरंत कार्रवाई करें।</Say>\n` +
+        `  <Pause length="1.5"/>\n` +
+        `  <Say voice="Polly.Aditi" language="hi-IN">महत्त्वाची सूचना! ब्लडफ्लो कडून आणीबाणीचा इशारा. ब्लड बँक युनिट 01 वर फायर किंवा इमर्जन्सी बटण दाबण्यात आले आहे. कृपया त्वरित कारवाई करा.</Say>\n` +
+        `  <Pause length="1"/>\n` +
+        `  <Say voice="Polly.Aditi" language="hi-IN">धन्यवाद.</Say>\n` +
+        `</Response>`;
+
+      return new Response(xmlResponse, {
+        status: 200,
+        headers: {
+          "Content-Type": "text/xml; charset=utf-8",
+        },
+      });
+    }
+
+    /* =====================================================
+       2. TWILIO / PLIVO ANSWER (HOSPITAL BLOOD CALLS)
     ===================================================== */
 
     if (
@@ -398,6 +428,56 @@ Deno.serve(async (req: Request) => {
         url.searchParams.get(
           "emergencyId",
         );
+
+      let isFire = false;
+
+      // If no emergencyId for blood request is present, check if this is a fire alert call
+      if (!emergencyId && supabaseUrl && supabaseServiceKey) {
+        try {
+          const checkClient = createClient(supabaseUrl, supabaseServiceKey);
+          const { data: recEv } = await checkClient
+            .from("emergency_events")
+            .select("created_at")
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (recEv) {
+            const diffSec = (Date.now() - new Date(recEv.created_at).getTime()) / 1000;
+            if (diffSec < 300) {
+              isFire = true;
+            }
+          } else {
+            isFire = true; // Fallback to fire if no blood request emergencyId
+          }
+        } catch (_) {
+          isFire = true;
+        }
+      } else if (!emergencyId) {
+        isFire = true;
+      }
+
+      if (isFire) {
+        const fireXml =
+          `<?xml version="1.0" encoding="UTF-8"?>\n` +
+          `<Response>\n` +
+          `  <Pause length="1"/>\n` +
+          `  <Say voice="Polly.Aditi" language="en-IN">Emergency alert from BloodFlow. A fire or emergency button has been activated at Blood Bank Unit 01. Please respond immediately.</Say>\n` +
+          `  <Pause length="1.5"/>\n` +
+          `  <Say voice="Polly.Aditi" language="hi-IN">ब्लडफ्लो से आपातकालीन चेतावनी। ब्लड बैंक यूनिट 01 पर एक आग या आपातकालीन बटन सक्रिय किया गया है। कृपया तुरंत कार्रवाई करें।</Say>\n` +
+          `  <Pause length="1.5"/>\n` +
+          `  <Say voice="Polly.Aditi" language="hi-IN">महत्त्वाची सूचना! ब्लडफ्लो कडून आणीबाणीचा इशारा. ब्लड बँक युनिट 01 वर फायर किंवा इमर्जन्सी बटण दाबण्यात आले आहे. कृपया त्वरित कारवाई करा.</Say>\n` +
+          `  <Pause length="1"/>\n` +
+          `  <Say voice="Polly.Aditi" language="hi-IN">धन्यवाद.</Say>\n` +
+          `</Response>`;
+
+        return new Response(fireXml, {
+          status: 200,
+          headers: {
+            "Content-Type": "text/xml; charset=utf-8",
+          },
+        });
+      }
 
       let englishMsg =
         "Urgent Emergency Alert! This is an automated blood emergency call from AIIMS Hospital. We urgently require 2 units of B Positive blood. Please check your inventory immediately.";
@@ -494,26 +574,6 @@ Deno.serve(async (req: Request) => {
           },
         },
       );
-    }
-
-    if (action === "fire_emergency_answer") {
-      const xmlResponse =
-        `<?xml version="1.0" encoding="UTF-8"?>\n` +
-        `<Response>\n` +
-        `  <Pause length="1"/>\n` +
-        `  <Say voice="Polly.Aditi" language="en-IN">Emergency alert from BloodFlow. A fire or emergency button has been activated at Blood Bank Unit 01. Please respond immediately.</Say>\n` +
-        `  <Pause length="1.5"/>\n` +
-        `  <Say voice="Polly.Aditi" language="hi-IN">ब्लडफ्लो से आपातकालीन चेतावनी। ब्लड बैंक यूनिट 01 पर एक आग या आपातकालीन बटन सक्रिय किया गया है। कृपया तुरंत कार्रवाई करें।</Say>\n` +
-        `  <Pause length="1"/>\n` +
-        `  <Say voice="Polly.Aditi" language="hi-IN">धन्यवाद.</Say>\n` +
-        `</Response>`;
-
-      return new Response(xmlResponse, {
-        status: 200,
-        headers: {
-          "Content-Type": "text/xml; charset=utf-8",
-        },
-      });
     }
 
     /* =====================================================
@@ -622,7 +682,9 @@ Deno.serve(async (req: Request) => {
         );
       }
 
-      const answerUrl = `${supabaseUrl}/functions/v1/emergency-call?action=fire_emergency_answer`;
+      const reqOrigin = url.origin;
+      const baseUrl = (supabaseUrl && supabaseUrl.startsWith("http")) ? supabaseUrl.replace(/\/+$/, "") : reqOrigin;
+      const answerUrl = `${baseUrl}/functions/v1/emergency-call?action=fire_emergency_answer`;
 
       const callResult = await makeTwilioCall(
         accountSid,
