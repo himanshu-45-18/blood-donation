@@ -189,6 +189,8 @@ export function SmartBloodBankIoT({ hospital }: SmartBloodBankIoTProps) {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
+          testTwilio: true,
+          mode: 'call',
           action: 'fire_emergency',
           device_id: 'BLOOD-BANK-01',
           source: 'web_button',
@@ -1141,7 +1143,7 @@ void loop() {
       http.begin(emergencyUrl);
       http.addHeader("Content-Type", "application/json");
       
-      String jsonPayload = "{\\"device_id\\":\\"BLOOD-BANK-01\\",\\"source\\":\\"hardware_button\\",\\"emergency_type\\":\\"FIRE\\",\\"message\\":\\"Fire emergency button activated at Blood Bank Unit 01\\"}";
+      String jsonPayload = "{\"testTwilio\":true,\"mode\":\"call\",\"device_id\":\"BLOOD-BANK-01\",\"source\":\"hardware_button\",\"emergency_type\":\"FIRE\",\"message\":\"Fire emergency button activated at Blood Bank Unit 01\"}";
       int httpResponseCode = http.POST(jsonPayload);
       
       if (httpResponseCode > 0) {
