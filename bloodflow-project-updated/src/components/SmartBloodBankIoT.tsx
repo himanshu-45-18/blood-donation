@@ -63,6 +63,10 @@ export function SmartBloodBankIoT({ hospital }: SmartBloodBankIoTProps) {
   const [triggeringEmergency, setTriggeringEmergency] = useState(false);
   const [emergencyCallStatus, setEmergencyCallStatus] = useState<'Ready' | 'Calling...' | 'Call Initiated' | 'Call Failed'>('Ready');
   const [emergencyErrorMessage, setEmergencyErrorMessage] = useState<string | null>(null);
+  const [fireCallToPhone, setFireCallToPhone] = useState<string>(() => {
+    return localStorage.getItem('BLOODFLOW_FIRE_CALL_TO') || import.meta.env.VITE_FIRE_CALL_TO || '';
+  });
+  const [showPhoneSettingsModal, setShowPhoneSettingsModal] = useState(false);
 
   const [selectedTimeRange, setSelectedTimeRange] = useState<'1h' | '6h' | '24h'>('1h');
   const [selectedDeviceModal, setSelectedDeviceModal] = useState<IoTDevice | null>(null);
@@ -183,7 +187,9 @@ export function SmartBloodBankIoT({ hospital }: SmartBloodBankIoTProps) {
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData?.session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY;
       
-      const callPayload = {
+      const targetPhone = fireCallToPhone.trim() || localStorage.getItem('BLOODFLOW_FIRE_CALL_TO') || import.meta.env.VITE_FIRE_CALL_TO;
+
+      const callPayload: Record<string, unknown> = {
         testTwilio: true,
         mode: 'call',
         action: 'fire_emergency',
@@ -192,6 +198,11 @@ export function SmartBloodBankIoT({ hospital }: SmartBloodBankIoTProps) {
         emergency_type: 'FIRE',
         message: 'Fire emergency button activated from Doctor Dashboard Web UI',
       };
+
+      if (targetPhone) {
+        callPayload.toNumber = targetPhone;
+        callPayload.toPhone = targetPhone;
+      }
 
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/emergency-call?action=fire_emergency`, {
         method: 'POST',
@@ -360,7 +371,17 @@ export function SmartBloodBankIoT({ hospital }: SmartBloodBankIoTProps) {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  size="xs"
+                  variant="outline"
+                  onClick={() => setShowPhoneSettingsModal(true)}
+                  className="text-[11px] h-7 px-2.5 font-mono"
+                  title="Configure target recipient phone number"
+                >
+                  <Sliders className="h-3 w-3 mr-1 text-slate-500" />
+                  {fireCallToPhone ? fireCallToPhone : 'Set Target Phone'}
+                </Button>
                 <span className="text-xs text-slate-500 font-semibold">Status:</span>
                 {isEmergencyActive ? (
                   <Badge variant="red" dot className="px-3 py-1 text-xs font-black animate-pulse">
@@ -1193,6 +1214,36 @@ void loop() {
               </Button>
               <Button variant="danger" onClick={handleTriggerEmergency}>
                 🚨 Confirm &amp; Dispatch Call
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Modal: Configure Emergency Phone Number */}
+      {showPhoneSettingsModal && (
+        <Modal
+          open
+          onClose={() => setShowPhoneSettingsModal(false)}
+          title="⚙️ Emergency Recipient Phone Number"
+        >
+          <div className="space-y-4 text-xs">
+            <p className="text-slate-600">
+              Enter your verified recipient phone number where you want to receive automated fire alert voice calls (e.g. <code className="bg-slate-100 px-1 py-0.5 rounded font-mono text-slate-800">+919876543210</code>).
+            </p>
+            <Input
+              label="Emergency Recipient Phone Number (FIRE_CALL_TO)"
+              placeholder="+919876543210"
+              value={fireCallToPhone}
+              onChange={(v) => {
+                setFireCallToPhone(v);
+                localStorage.setItem('BLOODFLOW_FIRE_CALL_TO', v);
+              }}
+              helperText="Saved in local browser state and sent with emergency dispatch requests."
+            />
+            <div className="flex justify-end pt-2">
+              <Button onClick={() => setShowPhoneSettingsModal(false)}>
+                Save Target Phone Number
               </Button>
             </div>
           </div>
