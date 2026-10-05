@@ -539,6 +539,8 @@ Deno.serve(async (req: Request) => {
        FIRE & EMERGENCY ALERT IOT TRIGGER
     ===================================================== */
     const isFireEmergency =
+      action === "fire_emergency" ||
+      payload.action === "fire_emergency" ||
       payload.source === "hardware_button" ||
       payload.source === "web_button" ||
       payload.emergency_type === "FIRE" ||

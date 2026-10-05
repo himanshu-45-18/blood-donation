@@ -42,3 +42,4 @@ BEGIN
     ALTER PUBLICATION supabase_realtime ADD TABLE public.emergency_events;
   END IF;
 END $$;
+

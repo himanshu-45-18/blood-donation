@@ -147,15 +147,49 @@ export function SmartBloodBankIoT({ hospital }: SmartBloodBankIoTProps) {
     setEmergencyErrorMessage(null);
 
     try {
+      // Cooldown Protection (45s check)
+      if (latestEmergencyEvent) {
+        const diffSec = (Date.now() - new Date(latestEmergencyEvent.created_at).getTime()) / 1000;
+        if (diffSec < 45) {
+          setEmergencyCallStatus('Call Initiated');
+          setEmergencyErrorMessage('Emergency call already triggered. Please wait before triggering another call.');
+          setTriggeringEmergency(false);
+          return;
+        }
+      }
+
+      // Record emergency event directly in Supabase DB (Guarantees instant Realtime UI update)
+      const eventPayload = {
+        device_id: 'BLOOD-BANK-01',
+        source: 'web_button',
+        emergency_type: 'FIRE',
+        message: 'Fire emergency button activated from Doctor Dashboard Web UI',
+        status: 'CALL_INITIATED',
+        created_at: new Date().toISOString(),
+      };
+
+      const { data: insertedEvent } = await supabase
+        .from('emergency_events')
+        .insert(eventPayload)
+        .select()
+        .single();
+
+      if (insertedEvent) {
+        setLatestEmergencyEvent(insertedEvent as EmergencyEvent);
+        setEmergencyCallStatus('Call Initiated');
+      }
+
+      // Dispatch automated Twilio emergency call via Edge Function
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData?.session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY;
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/emergency-call`, {
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/emergency-call?action=fire_emergency`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
+          action: 'fire_emergency',
           device_id: 'BLOOD-BANK-01',
           source: 'web_button',
           emergency_type: 'FIRE',
@@ -171,11 +205,15 @@ export function SmartBloodBankIoT({ hospital }: SmartBloodBankIoTProps) {
       } else if (response.ok && (res.success || res.status === 'CALL_INITIATED')) {
         setEmergencyCallStatus('Call Initiated');
         if (res.event) {
-          setLatestEmergencyEvent(res.event);
+          setLatestEmergencyEvent(res.event as EmergencyEvent);
         }
       } else {
+        const errorMsg = res.error || 'Emergency call dispatch failed. Check Twilio configuration.';
         setEmergencyCallStatus('Call Failed');
-        setEmergencyErrorMessage(res.error || 'Emergency call initiation failed.');
+        setEmergencyErrorMessage(errorMsg);
+        if (insertedEvent?.id) {
+          await supabase.from('emergency_events').update({ status: 'CALL_FAILED', error_message: errorMsg }).eq('id', insertedEvent.id);
+        }
       }
     } catch (err) {
       setEmergencyCallStatus('Call Failed');
