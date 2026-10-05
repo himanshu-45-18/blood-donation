@@ -222,3 +222,15 @@ export type IoTAlert = {
   storage_unit?: StorageUnit;
 };
 
+export type EmergencyEvent = {
+  id: string;
+  device_id: string;
+  source: 'hardware_button' | 'web_button' | string;
+  emergency_type: 'FIRE' | string;
+  message: string | null;
+  status: 'CALL_INITIATED' | 'CALL_FAILED' | 'PENDING' | 'BLOCKED_COOLDOWN' | string;
+  error_message?: string | null;
+  created_at: string;
+};
+
+

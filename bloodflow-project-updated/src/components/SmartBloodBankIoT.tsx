@@ -19,6 +19,9 @@ import {
   Info,
   Layers,
   Code2,
+  PhoneCall,
+  Flame,
+  ShieldAlert,
 } from 'lucide-react';
 import { Card, Badge, Button, Input, Select, Modal, EmptyState } from '@/components/ui';
 import {
@@ -31,6 +34,7 @@ import {
   type RFIDEvent,
   type IoTAlert,
   type Hospital,
+  type EmergencyEvent,
 } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/lib/auth';
@@ -53,6 +57,13 @@ export function SmartBloodBankIoT({ hospital }: SmartBloodBankIoTProps) {
   const [alerts, setAlerts] = useState<IoTAlert[]>([]);
   const [tempHistory, setTempHistory] = useState<{ time: string; ST001: number; ST002: number; ST003: number }[]>([]);
 
+  // Fire & Emergency Alert IoT State
+  const [latestEmergencyEvent, setLatestEmergencyEvent] = useState<EmergencyEvent | null>(null);
+  const [showEmergencyConfirmModal, setShowEmergencyConfirmModal] = useState(false);
+  const [triggeringEmergency, setTriggeringEmergency] = useState(false);
+  const [emergencyCallStatus, setEmergencyCallStatus] = useState<'Ready' | 'Calling...' | 'Call Initiated' | 'Call Failed'>('Ready');
+  const [emergencyErrorMessage, setEmergencyErrorMessage] = useState<string | null>(null);
+
   const [selectedTimeRange, setSelectedTimeRange] = useState<'1h' | '6h' | '24h'>('1h');
   const [selectedDeviceModal, setSelectedDeviceModal] = useState<IoTDevice | null>(null);
   const [showHardwareGuideModal, setShowHardwareGuideModal] = useState(false);
@@ -69,12 +80,13 @@ export function SmartBloodBankIoT({ hospital }: SmartBloodBankIoTProps) {
   // Fetch real data from Supabase
   const fetchSupabaseIoTData = useCallback(async () => {
     try {
-      const [unitsRes, devRes, bloodRes, rfidRes, alertRes] = await Promise.all([
+      const [unitsRes, devRes, bloodRes, rfidRes, alertRes, emergencyRes] = await Promise.all([
         supabase.from('storage_units').select('*').order('storage_code'),
         supabase.from('iot_devices').select('*').order('device_id'),
         supabase.from('blood_units').select('*').order('created_at', { ascending: false }),
         supabase.from('rfid_events').select('*').order('scanned_at', { ascending: false }),
         supabase.from('iot_alerts').select('*').order('created_at', { ascending: false }),
+        supabase.from('emergency_events').select('*').order('created_at', { ascending: false }).limit(1).maybeSingle(),
       ]);
 
       if (unitsRes.data) setStorageUnits(unitsRes.data);
@@ -82,6 +94,16 @@ export function SmartBloodBankIoT({ hospital }: SmartBloodBankIoTProps) {
       if (bloodRes.data) setBloodUnits(bloodRes.data);
       if (rfidRes.data) setRfidEvents(rfidRes.data);
       if (alertRes.data) setAlerts(alertRes.data);
+      if (emergencyRes.data) {
+        const ev = emergencyRes.data as EmergencyEvent;
+        setLatestEmergencyEvent(ev);
+        if (ev.status === 'CALL_INITIATED') {
+          setEmergencyCallStatus('Call Initiated');
+        } else if (ev.status === 'CALL_FAILED') {
+          setEmergencyCallStatus('Call Failed');
+          setEmergencyErrorMessage(ev.error_message || 'Call failed');
+        }
+      }
     } catch (err) {
       console.error('Error fetching Supabase IoT data:', err);
     }
@@ -90,7 +112,7 @@ export function SmartBloodBankIoT({ hospital }: SmartBloodBankIoTProps) {
   useEffect(() => {
     fetchSupabaseIoTData();
 
-    // Supabase Realtime Channels for IoT tables
+    // Supabase Realtime Channels for IoT tables & Emergency Events
     const channel = supabase
       .channel('bloodflow-iot-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'storage_units' }, fetchSupabaseIoTData)
@@ -98,12 +120,70 @@ export function SmartBloodBankIoT({ hospital }: SmartBloodBankIoTProps) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'blood_units' }, fetchSupabaseIoTData)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'rfid_events' }, fetchSupabaseIoTData)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'iot_alerts' }, fetchSupabaseIoTData)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'emergency_events' }, (payload) => {
+        fetchSupabaseIoTData();
+        if (payload.new) {
+          const ev = payload.new as EmergencyEvent;
+          setLatestEmergencyEvent(ev);
+          if (ev.status === 'CALL_INITIATED') {
+            setEmergencyCallStatus('Call Initiated');
+          } else if (ev.status === 'CALL_FAILED') {
+            setEmergencyCallStatus('Call Failed');
+            setEmergencyErrorMessage(ev.error_message || 'Call failed');
+          }
+        }
+      })
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
   }, [fetchSupabaseIoTData]);
+
+  async function handleTriggerEmergency() {
+    setShowEmergencyConfirmModal(false);
+    setTriggeringEmergency(true);
+    setEmergencyCallStatus('Calling...');
+    setEmergencyErrorMessage(null);
+
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY;
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/emergency-call`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          device_id: 'BLOOD-BANK-01',
+          source: 'web_button',
+          emergency_type: 'FIRE',
+          message: 'Fire emergency button activated from Doctor Dashboard Web UI',
+        }),
+      });
+
+      const res = await response.json().catch(() => ({}));
+
+      if (response.status === 429 || res.cooldown) {
+        setEmergencyCallStatus('Call Initiated');
+        setEmergencyErrorMessage('Emergency call already triggered. Please wait before triggering another call.');
+      } else if (response.ok && (res.success || res.status === 'CALL_INITIATED')) {
+        setEmergencyCallStatus('Call Initiated');
+        if (res.event) {
+          setLatestEmergencyEvent(res.event);
+        }
+      } else {
+        setEmergencyCallStatus('Call Failed');
+        setEmergencyErrorMessage(res.error || 'Emergency call initiation failed.');
+      }
+    } catch (err) {
+      setEmergencyCallStatus('Call Failed');
+      setEmergencyErrorMessage(err instanceof Error ? err.message : 'Network error');
+    } finally {
+      setTriggeringEmergency(false);
+    }
+  }
 
   async function acknowledgeAlert(alertId: string) {
     setAlerts((prev) =>
@@ -141,6 +221,12 @@ export function SmartBloodBankIoT({ hospital }: SmartBloodBankIoTProps) {
     const count = bloodUnits.filter((bu) => bu.blood_group === group && bu.status === 'AVAILABLE').length;
     return { group, count };
   });
+
+  const isEmergencyActive = !!(
+    latestEmergencyEvent &&
+    (Date.now() - new Date(latestEmergencyEvent.created_at).getTime()) < 5 * 60 * 1000 &&
+    latestEmergencyEvent.status !== 'CALL_FAILED'
+  );
 
   return (
     <div className="space-y-6 font-sans">
@@ -214,6 +300,112 @@ export function SmartBloodBankIoT({ hospital }: SmartBloodBankIoTProps) {
       {/* 1. OVERVIEW TAB */}
       {subTab === 'overview' && (
         <div className="space-y-6">
+          {/* 🚨 FIRE & EMERGENCY ALERT IOT CARD */}
+          <Card className={cn("p-6 transition-all border-2", isEmergencyActive ? "bg-red-50/80 border-red-500 shadow-lg shadow-red-500/10" : "bg-white border-slate-200")}>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200/80 pb-4 mb-4">
+              <div className="flex items-center gap-3">
+                <div className={cn("p-3 rounded-2xl", isEmergencyActive ? "bg-red-600 text-white animate-bounce" : "bg-red-100 text-red-600")}>
+                  <AlertTriangle className="h-6 w-6" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                    🚨 Fire &amp; Emergency Alert
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Hardware push button &amp; web trigger linked to automated Twilio emergency calling.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-500 font-semibold">Status:</span>
+                {isEmergencyActive ? (
+                  <Badge variant="red" dot className="px-3 py-1 text-xs font-black animate-pulse">
+                    🔴 EMERGENCY ACTIVE
+                  </Badge>
+                ) : (
+                  <Badge variant="green" dot className="px-3 py-1 text-xs font-bold">
+                    🟢 NORMAL
+                  </Badge>
+                )}
+              </div>
+            </div>
+
+            {isEmergencyActive && latestEmergencyEvent ? (
+              <div className="bg-red-600 text-white rounded-2xl p-5 mb-5 space-y-3 shadow-md animate-fade-in">
+                <div className="flex items-center justify-between border-b border-red-500/80 pb-2">
+                  <div className="flex items-center gap-2 text-base font-extrabold tracking-wide">
+                    <Zap className="h-5 w-5 text-amber-300 animate-pulse" />
+                    <span>🔥 FIRE / EMERGENCY DETECTED</span>
+                  </div>
+                  <span className="text-xs bg-red-800/80 text-red-100 px-2.5 py-1 rounded-lg font-mono">
+                    {new Date(latestEmergencyEvent.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs pt-1">
+                  <div>
+                    <span className="text-red-200 block text-[10px] uppercase tracking-wider font-semibold">Source</span>
+                    <span className="font-bold text-white text-sm">
+                      {latestEmergencyEvent.source === 'hardware_button' ? '🔘 Hardware Button' : '💻 Web Button'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-red-200 block text-[10px] uppercase tracking-wider font-semibold">Device</span>
+                    <span className="font-bold text-white text-sm">{latestEmergencyEvent.device_id || 'BLOOD-BANK-01'}</span>
+                  </div>
+                  <div>
+                    <span className="text-red-200 block text-[10px] uppercase tracking-wider font-semibold">Call Status</span>
+                    <span className="font-bold text-white text-sm flex items-center gap-1.5">
+                      <PhoneCall className="h-3.5 w-3.5 animate-pulse" />
+                      {emergencyCallStatus === 'Calling...' ? 'Calling emergency contact...' : emergencyCallStatus}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
+            {/* Controls & Last Event Strip */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="space-y-1 text-xs text-slate-600 text-center sm:text-left w-full sm:w-auto">
+                <div className="flex items-center justify-center sm:justify-start gap-2">
+                  <span className="font-medium text-slate-500">Last Event:</span>
+                  <span className="font-semibold text-slate-800">
+                    {latestEmergencyEvent ? `${latestEmergencyEvent.emergency_type} (${latestEmergencyEvent.source === 'hardware_button' ? 'Hardware Button' : 'Web Button'})` : '—'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-center sm:justify-start gap-2">
+                  <span className="font-medium text-slate-500">Call Status:</span>
+                  <span className={cn(
+                    "font-bold px-2 py-0.5 rounded text-[11px]",
+                    emergencyCallStatus === 'Call Initiated' ? "bg-emerald-100 text-emerald-800" :
+                    emergencyCallStatus === 'Call Failed' ? "bg-red-100 text-red-800" :
+                    "bg-slate-100 text-slate-700"
+                  )}>
+                    {emergencyCallStatus}
+                  </span>
+                </div>
+              </div>
+
+              <Button
+                variant="danger"
+                size="lg"
+                disabled={triggeringEmergency}
+                onClick={() => setShowEmergencyConfirmModal(true)}
+                className="w-full sm:w-auto font-extrabold text-sm py-3 px-6 shadow-md hover:shadow-lg transition-all"
+              >
+                <AlertTriangle className="h-4 w-4 mr-2" />
+                {triggeringEmergency ? 'Calling...' : '🚨 TRIGGER EMERGENCY'}
+              </Button>
+            </div>
+
+            {emergencyErrorMessage && (
+              <div className="mt-3 p-3 bg-red-100/90 border border-red-200 rounded-xl text-xs text-red-800 flex items-center gap-2">
+                <XCircle className="h-4 w-4 shrink-0 text-red-600" />
+                <span>{emergencyErrorMessage}</span>
+              </div>
+            )}
+          </Card>
           {/* Summary Metric Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Storage Units */}
@@ -817,7 +1009,7 @@ export function SmartBloodBankIoT({ hospital }: SmartBloodBankIoTProps) {
             <div className="rounded-xl bg-red-50 p-3 border border-red-200">
               <h4 className="font-bold text-red-900 text-sm">Step-by-Step Hardware Wiring:</h4>
               <p className="text-red-700 mt-1">
-                Connect your physical <strong>ESP32 NodeMCU board</strong> to the sensors as follows:
+                Connect your physical <strong>ESP32 NodeMCU board</strong> to the sensors and push button as follows:
               </p>
             </div>
 
@@ -834,9 +1026,15 @@ export function SmartBloodBankIoT({ hospital }: SmartBloodBankIoTProps) {
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-slate-600">
                   <tr>
+                    <td className="p-2.5 font-bold">Fire Push Button</td>
+                    <td className="p-2.5">Terminal 1 / 2</td>
+                    <td className="p-2.5 font-mono text-red-600 font-bold">GPIO 27 &amp; GND</td>
+                    <td className="p-2.5">INPUT_PULLUP (HIGH = Normal, LOW = Pressed)</td>
+                  </tr>
+                  <tr>
                     <td className="p-2.5 font-bold">DS18B20 Temp Sensor</td>
                     <td className="p-2.5">VCC, GND, DATA</td>
-                    <td className="p-2.5 font-mono text-red-600 font-bold">GPIO 4</td>
+                    <td className="p-2.5 font-mono text-amber-600 font-bold">GPIO 4</td>
                     <td className="p-2.5">Requires 4.7kΩ pull-up resistor to 3.3V</td>
                   </tr>
                   <tr>
@@ -863,34 +1061,97 @@ export function SmartBloodBankIoT({ hospital }: SmartBloodBankIoTProps) {
 
             {/* Arduino Sketch Snippet */}
             <div>
-              <h4 className="font-bold text-slate-900 mb-1.5">ESP32 C++ Code Snippet (Arduino IDE):</h4>
+              <h4 className="font-bold text-slate-900 mb-1.5">ESP32 C++ Sketch (Arduino IDE - GPIO 27 Emergency Button):</h4>
               <div className="rounded-xl border border-slate-800 bg-slate-950 p-3.5 text-slate-200 font-mono text-[11px] overflow-x-auto">
                 <pre>{`#include <WiFi.h>
 #include <HTTPClient.h>
 
 const char* ssid = "YOUR_WIFI_SSID";
 const char* password = "YOUR_WIFI_PASSWORD";
-const char* supabaseUrl = "https://gvwdrbrepbpmhjckdcyq.supabase.co/rest/v1/temperature_readings";
-const char* anonKey = "YOUR_SUPABASE_ANON_KEY";
+const char* emergencyUrl = "https://gvwdrbrepbpmhjckdcyq.supabase.co/functions/v1/emergency-call";
 
-void sendTemperature(float tempC) {
-  if (WiFi.status() == WL_CONNECTED) {
-    HTTPClient http;
-    http.begin(supabaseUrl);
-    http.addHeader("Content-Type", "application/json");
-    http.addHeader("apikey", anonKey);
+const int EMERGENCY_BUTTON_PIN = 27; // GPIO 27 Push Button
+unsigned long lastDebounceTime = 0;
+const unsigned long debounceDelay = 200; // ms
 
-    String jsonPayload = "{\\"device_id\\":\\"ESP32-001\\",\\"temperature\\":" + String(tempC) + "}";
-    int httpResponseCode = http.POST(jsonPayload);
-    http.end();
+void setup() {
+  Serial.begin(115200);
+  pinMode(EMERGENCY_BUTTON_PIN, INPUT_PULLUP);
+  
+  WiFi.begin(ssid, password);
+  Serial.println("BloodFlow Emergency IoT");
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("\\nWiFi Connected");
+  Serial.println("Monitoring emergency button on GPIO 27...");
+}
+
+void loop() {
+  int buttonState = digitalRead(EMERGENCY_BUTTON_PIN);
+  
+  // Button pressed = LOW (because of INPUT_PULLUP)
+  if (buttonState == LOW && (millis() - lastDebounceTime) > debounceDelay) {
+    lastDebounceTime = millis();
+    Serial.println("\\n!!! EMERGENCY BUTTON PRESSED !!!");
+    Serial.println("Emergency Type: FIRE");
+    Serial.println("Sending emergency request...");
+    
+    if (WiFi.status() == WL_CONNECTED) {
+      HTTPClient http;
+      http.begin(emergencyUrl);
+      http.addHeader("Content-Type", "application/json");
+      
+      String jsonPayload = "{\\"device_id\\":\\"BLOOD-BANK-01\\",\\"source\\":\\"hardware_button\\",\\"emergency_type\\":\\"FIRE\\",\\"message\\":\\"Fire emergency button activated at Blood Bank Unit 01\\"}";
+      int httpResponseCode = http.POST(jsonPayload);
+      
+      if (httpResponseCode > 0) {
+        Serial.printf("Emergency request sent. Status Code: %d\\n", httpResponseCode);
+      } else {
+        Serial.printf("Emergency request failed. Error: %s\\n", http.errorToString(httpResponseCode).c_str());
+      }
+      http.end();
+    }
+    delay(5000); // 5-second hardware cooldown
   }
 }`}</pre>
               </div>
             </div>
 
             <p className="text-slate-500 text-[11px]">
-              Once powered on, the ESP32 will transmit readings directly into Supabase tables via REST API and automatically trigger real-time updates in BloodFlow!
+              Once powered on, pressing the physical GPIO 27 button will immediately log an emergency event in Supabase and trigger an automated Twilio emergency voice call!
             </p>
+          </div>
+        </Modal>
+      )}
+
+      {/* Modal: Emergency Trigger Confirmation */}
+      {showEmergencyConfirmModal && (
+        <Modal
+          open
+          onClose={() => setShowEmergencyConfirmModal(false)}
+          title="🚨 Confirm BloodFlow Emergency Trigger"
+        >
+          <div className="space-y-4 text-xs">
+            <div className="p-4 bg-red-50 border border-red-200 rounded-2xl flex items-start gap-3">
+              <AlertTriangle className="h-6 w-6 text-red-600 shrink-0 mt-0.5" />
+              <div className="text-xs text-red-900 space-y-1">
+                <p className="font-bold text-sm">Are you sure you want to trigger a BloodFlow emergency call?</p>
+                <p className="leading-relaxed">
+                  This will immediately trigger an automated Twilio voice call to the primary emergency contact number (<code className="bg-red-100 px-1 py-0.5 rounded font-mono text-red-900 font-bold">TWILIO_TO_1</code>) informing them of a fire/emergency event at Blood Bank Unit 01.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setShowEmergencyConfirmModal(false)}>
+                Cancel
+              </Button>
+              <Button variant="danger" onClick={handleTriggerEmergency}>
+                🚨 Confirm &amp; Dispatch Call
+              </Button>
+            </div>
           </div>
         </Modal>
       )}

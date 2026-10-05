@@ -117,6 +117,29 @@ serve(async (req: Request) => {
       });
     }
 
+    // 3. Fire & Emergency Alert Submission (ESP32 Push Button)
+    if (url.pathname.endsWith('/emergency') || body.type === 'emergency' || body.emergency_type === 'FIRE' || body.source === 'hardware_button') {
+      const emergencyRes = await fetch(`${supabaseUrl}/functions/v1/emergency-call`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseServiceKey}`,
+        },
+        body: JSON.stringify({
+          device_id: body.device_id || 'BLOOD-BANK-01',
+          source: body.source || 'hardware_button',
+          emergency_type: body.emergency_type || 'FIRE',
+          message: body.message || 'Fire emergency button activated at Blood Bank Unit 01',
+        }),
+      });
+
+      const data = await emergencyRes.json().catch(() => ({}));
+      return new Response(JSON.stringify(data), {
+        status: emergencyRes.status,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // Default Heartbeat Response
     return new Response(JSON.stringify({ success: true, timestamp: new Date().toISOString() }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

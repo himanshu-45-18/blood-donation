@@ -496,6 +496,26 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    if (action === "fire_emergency_answer") {
+      const xmlResponse =
+        `<?xml version="1.0" encoding="UTF-8"?>\n` +
+        `<Response>\n` +
+        `  <Pause length="1"/>\n` +
+        `  <Say voice="Polly.Aditi" language="en-IN">Emergency alert from BloodFlow. A fire or emergency button has been activated at Blood Bank Unit 01. Please respond immediately.</Say>\n` +
+        `  <Pause length="1.5"/>\n` +
+        `  <Say voice="Polly.Aditi" language="hi-IN">ब्लडफ्लो से आपातकालीन चेतावनी। ब्लड बैंक यूनिट 01 पर एक आग या आपातकालीन बटन सक्रिय किया गया है। कृपया तुरंत कार्रवाई करें।</Say>\n` +
+        `  <Pause length="1"/>\n` +
+        `  <Say voice="Polly.Aditi" language="hi-IN">धन्यवाद.</Say>\n` +
+        `</Response>`;
+
+      return new Response(xmlResponse, {
+        status: 200,
+        headers: {
+          "Content-Type": "text/xml; charset=utf-8",
+        },
+      });
+    }
+
     /* =====================================================
        READ PAYLOAD
     ===================================================== */
@@ -514,6 +534,129 @@ Deno.serve(async (req: Request) => {
         : await req
             .json()
             .catch(() => ({}));
+
+    /* =====================================================
+       FIRE & EMERGENCY ALERT IOT TRIGGER
+    ===================================================== */
+    const isFireEmergency =
+      payload.source === "hardware_button" ||
+      payload.source === "web_button" ||
+      payload.emergency_type === "FIRE" ||
+      payload.triggerEmergency === true;
+
+    if (isFireEmergency) {
+      if (!supabaseUrl || !supabaseServiceKey) {
+        return jsonResponse(
+          { error: "Supabase function configuration is incomplete" },
+          500,
+        );
+      }
+
+      const adminClient = createClient(supabaseUrl, supabaseServiceKey);
+
+      // Cooldown Protection (30-60 sec check)
+      const { data: recentEvents } = await adminClient
+        .from("emergency_events")
+        .select("created_at")
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      if (recentEvents && recentEvents.length > 0) {
+        const lastTime = new Date(recentEvents[0].created_at).getTime();
+        const diffSec = (Date.now() - lastTime) / 1000;
+        if (diffSec < 45) {
+          return jsonResponse(
+            {
+              success: false,
+              cooldown: true,
+              status: "BLOCKED_COOLDOWN",
+              error: "Emergency call already triggered. Please wait before triggering another call.",
+            },
+            429,
+          );
+        }
+      }
+
+      const accountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
+      const authToken = Deno.env.get("TWILIO_AUTH_TOKEN");
+
+      const toPhone = normalizePhoneNumber(
+        Deno.env.get("TWILIO_TO_1") ||
+        Deno.env.get("TWILIO_TEST_TO_NUMBER")
+      );
+
+      const fromPhone = toPhone
+        ? getTwilioFromForRecipient(toPhone) || normalizeFromPhoneNumber(Deno.env.get("TWILIO_FROM_1") || Deno.env.get("TWILIO_FROM_NUMBER"))
+        : normalizeFromPhoneNumber(Deno.env.get("TWILIO_FROM_1") || Deno.env.get("TWILIO_FROM_NUMBER"));
+
+      if (!accountSid || !authToken || !fromPhone || !toPhone) {
+        const failedEvent = {
+          device_id: payload.device_id || "BLOOD-BANK-01",
+          source: payload.source || "web_button",
+          emergency_type: payload.emergency_type || "FIRE",
+          message: payload.message || "Fire emergency button activated",
+          status: "CALL_FAILED",
+          error_message: "Twilio credentials or TWILIO_TO_1 / TWILIO_FROM_1 environment variables missing",
+          created_at: new Date().toISOString(),
+        };
+        await adminClient.from("emergency_events").insert(failedEvent);
+
+        return jsonResponse(
+          {
+            success: false,
+            status: "CALL_FAILED",
+            error: "Twilio configuration missing. Set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_TO_1, and TWILIO_FROM_1 secrets.",
+            event: failedEvent,
+          },
+          400,
+        );
+      }
+
+      const answerUrl = `${supabaseUrl}/functions/v1/emergency-call?action=fire_emergency_answer`;
+
+      const callResult = await makeTwilioCall(
+        accountSid,
+        authToken,
+        fromPhone,
+        toPhone,
+        answerUrl
+      );
+
+      const eventRecord = {
+        device_id: payload.device_id || "BLOOD-BANK-01",
+        source: payload.source || "web_button",
+        emergency_type: payload.emergency_type || "FIRE",
+        message: payload.message || "Fire emergency button activated at Blood Bank Unit 01",
+        status: callResult.ok ? "CALL_INITIATED" : "CALL_FAILED",
+        error_message: callResult.ok ? null : (callResult.error || "Voice call failed"),
+        created_at: new Date().toISOString(),
+      };
+
+      await adminClient.from("emergency_events").insert(eventRecord);
+
+      if (callResult.ok) {
+        return jsonResponse({
+          success: true,
+          status: "CALL_INITIATED",
+          sid: callResult.sid,
+          from: fromPhone,
+          to: toPhone,
+          event: eventRecord,
+        });
+      } else {
+        return jsonResponse(
+          {
+            success: false,
+            status: "CALL_FAILED",
+            error: callResult.error || "Twilio voice call failed",
+            from: fromPhone,
+            to: toPhone,
+            event: eventRecord,
+          },
+          400,
+        );
+      }
+    }
 
     /* =====================================================
        2. PLIVO STATUS CALLBACK
