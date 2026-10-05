@@ -151,38 +151,6 @@ export function SmartBloodBankIoT({ hospital }: SmartBloodBankIoTProps) {
     setEmergencyErrorMessage(null);
 
     try {
-      // Cooldown Protection (45s check)
-      if (latestEmergencyEvent) {
-        const diffSec = (Date.now() - new Date(latestEmergencyEvent.created_at).getTime()) / 1000;
-        if (diffSec < 45) {
-          setEmergencyCallStatus('Call Initiated');
-          setEmergencyErrorMessage('Emergency call already triggered. Please wait before triggering another call.');
-          setTriggeringEmergency(false);
-          return;
-        }
-      }
-
-      // Record emergency event directly in Supabase DB (Guarantees instant Realtime UI update)
-      const eventPayload = {
-        device_id: 'BLOOD-BANK-01',
-        source: 'web_button',
-        emergency_type: 'FIRE',
-        message: 'Fire emergency button activated from Doctor Dashboard Web UI',
-        status: 'CALL_INITIATED',
-        created_at: new Date().toISOString(),
-      };
-
-      const { data: insertedEvent } = await supabase
-        .from('emergency_events')
-        .insert(eventPayload)
-        .select()
-        .single();
-
-      if (insertedEvent) {
-        setLatestEmergencyEvent(insertedEvent as EmergencyEvent);
-        setEmergencyCallStatus('Call Initiated');
-      }
-
       // Dispatch automated Twilio emergency call via Edge Function
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData?.session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -217,7 +185,7 @@ export function SmartBloodBankIoT({ hospital }: SmartBloodBankIoTProps) {
 
       if (response.status === 429 || res.cooldown) {
         setEmergencyCallStatus('Call Initiated');
-        setEmergencyErrorMessage('Emergency call already triggered. Please wait before triggering another call.');
+        setEmergencyErrorMessage('Emergency call already triggered. Please wait a few seconds before triggering another call.');
       } else if (response.ok && (res.success || res.status === 'CALL_INITIATED')) {
         setEmergencyCallStatus('Call Initiated');
         if (res.event) {
@@ -227,9 +195,6 @@ export function SmartBloodBankIoT({ hospital }: SmartBloodBankIoTProps) {
         const errorMsg = res.error || 'Emergency call dispatch failed. Check Twilio configuration.';
         setEmergencyCallStatus('Call Failed');
         setEmergencyErrorMessage(errorMsg);
-        if (insertedEvent?.id) {
-          await supabase.from('emergency_events').update({ status: 'CALL_FAILED', error_message: errorMsg }).eq('id', insertedEvent.id);
-        }
       }
     } catch (err) {
       setEmergencyCallStatus('Call Failed');
@@ -237,6 +202,12 @@ export function SmartBloodBankIoT({ hospital }: SmartBloodBankIoTProps) {
     } finally {
       setTriggeringEmergency(false);
     }
+  }
+
+  function handleResetEmergencyAlert() {
+    setLatestEmergencyEvent(null);
+    setEmergencyCallStatus('Ready');
+    setEmergencyErrorMessage(null);
   }
 
   async function acknowledgeAlert(alertId: string) {
@@ -382,6 +353,17 @@ export function SmartBloodBankIoT({ hospital }: SmartBloodBankIoTProps) {
                   <Sliders className="h-3 w-3 mr-1 text-slate-500" />
                   {fireCallToPhone ? fireCallToPhone : 'Set Target Phone'}
                 </Button>
+                {isEmergencyActive && (
+                  <Button
+                    size="xs"
+                    variant="ghost"
+                    onClick={handleResetEmergencyAlert}
+                    className="text-[11px] h-7 px-2 font-semibold text-slate-600 hover:text-slate-900"
+                    title="Clear emergency alert and reset status to normal"
+                  >
+                    <RefreshCw className="h-3 w-3 mr-1" /> Reset Alert
+                  </Button>
+                )}
                 <span className="text-xs text-slate-500 font-semibold">Status:</span>
                 {isEmergencyActive ? (
                   <Badge variant="red" dot className="px-3 py-1 text-xs font-black animate-pulse">

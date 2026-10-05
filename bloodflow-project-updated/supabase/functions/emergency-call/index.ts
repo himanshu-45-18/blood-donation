@@ -616,23 +616,24 @@ Deno.serve(async (req: Request) => {
 
       const adminClient = createClient(supabaseUrl, supabaseServiceKey);
 
-      // Cooldown Protection (30-60 sec check)
+      // Cooldown Protection (Anti-spam / double-click protection)
       const { data: recentEvents } = await adminClient
         .from("emergency_events")
-        .select("created_at")
+        .select("created_at, status")
+        .eq("status", "CALL_INITIATED")
         .order("created_at", { ascending: false })
         .limit(1);
 
       if (recentEvents && recentEvents.length > 0) {
         const lastTime = new Date(recentEvents[0].created_at).getTime();
         const diffSec = (Date.now() - lastTime) / 1000;
-        if (diffSec < 45) {
+        if (diffSec < 10) {
           return jsonResponse(
             {
               success: false,
               cooldown: true,
               status: "BLOCKED_COOLDOWN",
-              error: "Emergency call already triggered. Please wait before triggering another call.",
+              error: "Emergency call already triggered. Please wait a few seconds before triggering another call.",
             },
             429,
           );
