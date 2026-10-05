@@ -583,13 +583,21 @@ Deno.serve(async (req: Request) => {
       const authToken = Deno.env.get("TWILIO_AUTH_TOKEN");
 
       const toPhone = normalizePhoneNumber(
+        payload.toNumber ||
+        payload.toPhone ||
+        Deno.env.get("FIRE_CALL_TO") ||
         Deno.env.get("TWILIO_TO_1") ||
         Deno.env.get("TWILIO_TEST_TO_NUMBER")
       );
 
-      const fromPhone = toPhone
-        ? getTwilioFromForRecipient(toPhone) || normalizeFromPhoneNumber(Deno.env.get("TWILIO_FROM_1") || Deno.env.get("TWILIO_FROM_NUMBER"))
-        : normalizeFromPhoneNumber(Deno.env.get("TWILIO_FROM_1") || Deno.env.get("TWILIO_FROM_NUMBER"));
+      const fromPhone = normalizeFromPhoneNumber(
+        payload.fromNumber ||
+        payload.fromPhone ||
+        Deno.env.get("FIRE_CALL_FROM") ||
+        (toPhone ? getTwilioFromForRecipient(toPhone) : null) ||
+        Deno.env.get("TWILIO_FROM_1") ||
+        Deno.env.get("TWILIO_FROM_NUMBER")
+      );
 
       if (!accountSid || !authToken || !fromPhone || !toPhone) {
         const failedEvent = {
@@ -598,7 +606,7 @@ Deno.serve(async (req: Request) => {
           emergency_type: payload.emergency_type || "FIRE",
           message: payload.message || "Fire emergency button activated",
           status: "CALL_FAILED",
-          error_message: "Twilio credentials or TWILIO_TO_1 / TWILIO_FROM_1 environment variables missing",
+          error_message: "Twilio configuration missing. Set FIRE_CALL_TO and FIRE_CALL_FROM secrets in Supabase.",
           created_at: new Date().toISOString(),
         };
         await adminClient.from("emergency_events").insert(failedEvent);
@@ -607,7 +615,7 @@ Deno.serve(async (req: Request) => {
           {
             success: false,
             status: "CALL_FAILED",
-            error: "Twilio configuration missing. Set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_TO_1, and TWILIO_FROM_1 secrets.",
+            error: "Twilio configuration missing. Set FIRE_CALL_TO and FIRE_CALL_FROM secrets in Supabase Edge Functions.",
             event: failedEvent,
           },
           400,
@@ -944,10 +952,20 @@ Deno.serve(async (req: Request) => {
           "TWILIO_AUTH_TOKEN",
         );
 
+      const isFireCall =
+        action === "fire_emergency" ||
+        payload.action === "fire_emergency" ||
+        payload.emergency_type === "FIRE" ||
+        payload.source === "hardware_button" ||
+        payload.source === "web_button";
+
       const toNumber =
         normalizePhoneNumber(
           payload.toNumber ||
             payload.toPhone ||
+            Deno.env.get(
+              "FIRE_CALL_TO",
+            ) ||
             Deno.env.get(
               "TWILIO_TO_1",
             ) ||
@@ -963,6 +981,13 @@ Deno.serve(async (req: Request) => {
       */
 
       const fromNumber =
+        normalizeFromPhoneNumber(
+          payload.fromNumber ||
+            payload.fromPhone ||
+            Deno.env.get(
+              "FIRE_CALL_FROM",
+            ),
+        ) ||
         (toNumber ? getTwilioFromForRecipient(toNumber) : null) ||
         normalizeFromPhoneNumber(
           Deno.env.get(
@@ -983,7 +1008,7 @@ Deno.serve(async (req: Request) => {
         return jsonResponse(
           {
             error:
-              "Twilio not configured. Set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN and recipient-specific TWILIO_TO_X / TWILIO_FROM_X secrets.",
+              "Twilio not configured. Set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, FIRE_CALL_TO, and FIRE_CALL_FROM secrets.",
           },
           400,
         );
@@ -993,7 +1018,7 @@ Deno.serve(async (req: Request) => {
         return jsonResponse(
           {
             error:
-              "No recipient phone number specified.",
+              "No recipient phone number specified. Configure FIRE_CALL_TO in Supabase Edge Functions.",
           },
           400,
         );
@@ -1041,7 +1066,7 @@ Deno.serve(async (req: Request) => {
       /* ---------------- VOICE ---------------- */
 
       const testAnswerUrl =
-        `${supabaseUrl}/functions/v1/emergency-call?action=test_answer`;
+        `${supabaseUrl}/functions/v1/emergency-call?action=${isFireCall ? "fire_emergency_answer" : "test_answer"}`;
 
       const result =
         await makeTwilioCall(

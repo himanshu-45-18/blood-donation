@@ -63,7 +63,6 @@ export function SmartBloodBankIoT({ hospital }: SmartBloodBankIoTProps) {
   const [triggeringEmergency, setTriggeringEmergency] = useState(false);
   const [emergencyCallStatus, setEmergencyCallStatus] = useState<'Ready' | 'Calling...' | 'Call Initiated' | 'Call Failed'>('Ready');
   const [emergencyErrorMessage, setEmergencyErrorMessage] = useState<string | null>(null);
-  const [emergencyRecipientPhone, setEmergencyRecipientPhone] = useState<string>('');
 
   const [selectedTimeRange, setSelectedTimeRange] = useState<'1h' | '6h' | '24h'>('1h');
   const [selectedDeviceModal, setSelectedDeviceModal] = useState<IoTDevice | null>(null);
@@ -184,7 +183,7 @@ export function SmartBloodBankIoT({ hospital }: SmartBloodBankIoTProps) {
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData?.session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY;
       
-      const callPayload: Record<string, unknown> = {
+      const callPayload = {
         testTwilio: true,
         mode: 'call',
         action: 'fire_emergency',
@@ -193,11 +192,6 @@ export function SmartBloodBankIoT({ hospital }: SmartBloodBankIoTProps) {
         emergency_type: 'FIRE',
         message: 'Fire emergency button activated from Doctor Dashboard Web UI',
       };
-
-      if (emergencyRecipientPhone.trim()) {
-        callPayload.toNumber = emergencyRecipientPhone.trim();
-        callPayload.toPhone = emergencyRecipientPhone.trim();
-      }
 
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/emergency-call?action=fire_emergency`, {
         method: 'POST',
@@ -1188,18 +1182,10 @@ void loop() {
               <div className="text-xs text-red-900 space-y-1">
                 <p className="font-bold text-sm">Are you sure you want to trigger a BloodFlow emergency call?</p>
                 <p className="leading-relaxed">
-                  This will immediately trigger an automated Twilio voice call to the designated emergency recipient phone number.
+                  This will immediately trigger an automated Twilio emergency voice call to your configured fire alert recipient (<code className="bg-red-100 px-1 py-0.5 rounded font-mono text-red-900 font-bold">FIRE_CALL_TO</code>).
                 </p>
               </div>
             </div>
-
-            <Input
-              label="Emergency Recipient Phone Number (Destination)"
-              placeholder="e.g. +919876543210 (Your personal / verified phone number)"
-              value={emergencyRecipientPhone}
-              onChange={(v) => setEmergencyRecipientPhone(v)}
-              helperText="Note: On Twilio Trial accounts, destination numbers must be added to your Twilio Verified Recipient list."
-            />
 
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="outline" onClick={() => setShowEmergencyConfirmModal(false)}>
