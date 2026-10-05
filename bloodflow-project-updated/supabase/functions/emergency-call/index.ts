@@ -947,6 +947,10 @@ Deno.serve(async (req: Request) => {
       const toNumber =
         normalizePhoneNumber(
           payload.toNumber ||
+            payload.toPhone ||
+            Deno.env.get(
+              "TWILIO_TO_1",
+            ) ||
             Deno.env.get(
               "TWILIO_TEST_TO_NUMBER",
             ),
@@ -959,15 +963,17 @@ Deno.serve(async (req: Request) => {
       */
 
       const fromNumber =
-        toNumber
-          ? getTwilioFromForRecipient(
-              toNumber,
-            )
-          : normalizeFromPhoneNumber(
-              Deno.env.get(
-                "TWILIO_FROM_NUMBER",
-              ),
-            );
+        (toNumber ? getTwilioFromForRecipient(toNumber) : null) ||
+        normalizeFromPhoneNumber(
+          Deno.env.get(
+            "TWILIO_FROM_1",
+          ),
+        ) ||
+        normalizeFromPhoneNumber(
+          Deno.env.get(
+            "TWILIO_FROM_NUMBER",
+          ),
+        );
 
       if (
         !accountSid ||
