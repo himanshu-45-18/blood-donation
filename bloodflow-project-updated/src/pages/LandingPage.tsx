@@ -1,15 +1,13 @@
 import {
   Droplets,
   Heart,
-  Phone,
   ShieldCheck,
   Building2,
   ArrowRight,
   Globe,
   Download,
   Smartphone,
-  CheckCircle2,
-  Ambulance,
+  Award,
 } from 'lucide-react';
 import { ThemeToggle } from '@/lib/theme';
 import { useLanguage } from '@/lib/i18n';
@@ -85,7 +83,7 @@ export function LandingPage({ onGetStarted, onLogin }: LandingPageProps) {
           {/* Subtle Live Badge */}
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-red-200 dark:border-red-900/60 bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 text-xs font-semibold mb-6">
             <span className="flex h-2 w-2 rounded-full bg-red-600 animate-pulse" />
-            <span>24/7 Lifesaving Blood &amp; Ambulance Network</span>
+            <span>24/7 Real-Time Lifesaving Blood Network</span>
           </div>
 
           {/* Clean Main Title */}
@@ -98,7 +96,7 @@ export function LandingPage({ onGetStarted, onLogin }: LandingPageProps) {
 
           {/* Subtitle */}
           <p className="mt-5 text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed max-w-2xl mx-auto font-normal">
-            BloodFlow connects voluntary blood donors, verified hospital blood banks, and critical care emergency response into one fast, reliable platform.
+            BloodFlow connects voluntary blood donors and verified hospital blood banks into one fast, reliable platform to save lives quickly and efficiently.
           </p>
 
           {/* Main Action Buttons */}
@@ -118,15 +116,6 @@ export function LandingPage({ onGetStarted, onLogin }: LandingPageProps) {
               <Building2 className="h-4 w-4 text-red-600" />
               <span>Hospital &amp; Admin Login</span>
             </button>
-          </div>
-
-          {/* Minimal 24/7 Emergency Ambulance Callout */}
-          <div className="mt-8 inline-flex items-center gap-2 rounded-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-2 text-xs text-slate-600 dark:text-slate-300 shadow-xs">
-            <Phone className="h-3.5 w-3.5 text-red-600 animate-pulse" />
-            <span>Emergency Ambulance Helpline:</span>
-            <a href="tel:108" className="font-bold text-red-600 dark:text-red-400 hover:underline">
-              Call 108 (Toll-Free)
-            </a>
           </div>
         </section>
 
@@ -149,17 +138,17 @@ export function LandingPage({ onGetStarted, onLogin }: LandingPageProps) {
               </div>
               <h2 className="text-base font-bold text-slate-900 dark:text-white">Hospital Network</h2>
               <p className="mt-2 text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                Live blood inventory management, emergency broadcast alerts, and verified donation certificates.
+                Live blood inventory management, emergency broadcast alerts, and verified donation scheduling.
               </p>
             </div>
 
             <div className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 mb-4">
-                <Ambulance className="h-5 w-5" />
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 mb-4">
+                <Award className="h-5 w-5" />
               </div>
-              <h2 className="text-base font-bold text-slate-900 dark:text-white">Emergency Calling</h2>
+              <h2 className="text-base font-bold text-slate-900 dark:text-white">Rewards &amp; Certificates</h2>
               <p className="mt-2 text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                One-tap rapid ambulance dispatch and automated Twilio voice notifications in critical situations.
+                Earn verified digital donation certificates and recognition badges for every verified contribution.
               </p>
             </div>
           </div>
@@ -175,7 +164,7 @@ export function LandingPage({ onGetStarted, onLogin }: LandingPageProps) {
               <div>
                 <h2 className="text-lg font-bold text-white">Download BloodFlow Mobile App</h2>
                 <p className="text-xs text-slate-300 mt-1">
-                  Get the official Android APK for one-tap emergency calling and instant donation alerts.
+                  Get the official Android APK for fast donation scheduling, status tracking, and certificates.
                 </p>
               </div>
             </div>
@@ -205,9 +194,6 @@ export function LandingPage({ onGetStarted, onLogin }: LandingPageProps) {
             <button onClick={onGetStarted} className="hover:text-red-600 dark:hover:text-red-400 transition-colors">
               Register
             </button>
-            <a href="tel:108" className="font-bold text-red-600 dark:text-red-400 hover:underline">
-              Ambulance: 108
-            </a>
           </div>
           <p>© {new Date().getFullYear()} BloodFlow. All rights reserved.</p>
         </div>

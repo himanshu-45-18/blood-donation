@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Calendar, Award, User, Droplet, Plus, Clock, Download, CheckCircle2, AlertCircle, MapPin, ShieldCheck, Trophy, Star, Sparkles, Ambulance, Phone } from 'lucide-react';
+import { Calendar, Award, User, Droplet, Plus, Clock, Download, CheckCircle2, AlertCircle, MapPin, ShieldCheck, Trophy, Star, Sparkles } from 'lucide-react';
 import { DashboardLayout, PageHeader, StatCard } from '@/components/DashboardLayout';
 import { Button, Input, Select, Card, Badge, Modal, EmptyState, Skeleton, ConfirmDialog } from '@/components/ui';
 import { useAuth } from '@/lib/auth';
@@ -8,9 +8,8 @@ import { useLanguage } from '@/lib/i18n';
 import { buildCertificateHtml } from '@/lib/certificateTemplate';
 import { DonorEligibilityCalculator } from '@/components/DonorEligibilityCalculator';
 import { InteractiveEmergencyMap } from '@/components/InteractiveEmergencyMap';
-import { AmbulanceDirectory } from '@/components/AmbulanceDirectory';
 
-type View = 'overview' | 'appointments' | 'certificates' | 'profile' | 'ambulance';
+type View = 'overview' | 'appointments' | 'certificates' | 'profile';
 type AppointmentFilter = 'all' | 'scheduled' | 'completed' | 'cancelled';
 
 export function DonorDashboard() {
@@ -84,7 +83,6 @@ export function DonorDashboard() {
 
   const navItems = [
     { id: 'overview', label: 'Overview', icon: <Droplet className="h-4 w-4" /> },
-    { id: 'ambulance', label: 'Ambulance SOS', icon: <Ambulance className="h-4 w-4 text-red-600 dark:text-red-400" /> },
     { id: 'appointments', label: tr('My Appointments'), icon: <Calendar className="h-4 w-4" /> },
     { id: 'certificates', label: 'Certificates', icon: <Award className="h-4 w-4" /> },
     { id: 'profile', label: tr('My Profile'), icon: <User className="h-4 w-4" /> },
@@ -153,39 +151,6 @@ export function DonorDashboard() {
               />
             </div>
           )}
-
-          {/* Quick Ambulance Emergency Banner */}
-          <div className="mt-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl bg-gradient-to-r from-red-600 via-rose-600 to-red-700 p-4 sm:p-5 text-white shadow-lg shadow-red-500/20">
-            <div className="flex items-center gap-3.5">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/20 text-white backdrop-blur-xs">
-                <Ambulance className="h-6 w-6 animate-pulse" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h4 className="font-bold text-white text-base">Emergency Ambulance Dispatch</h4>
-                  <span className="rounded-full bg-white/25 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">24x7 SOS</span>
-                </div>
-                <p className="text-xs text-red-100 mt-0.5">
-                  Directly dispatch ALS/BLS ambulances or call national emergency numbers (108 / 102).
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2.5 w-full sm:w-auto">
-              <a
-                href="tel:108"
-                className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 rounded-xl bg-white px-4 py-2.5 text-xs font-bold text-red-600 shadow-sm hover:bg-red-50 transition-colors"
-              >
-                <Phone className="h-3.5 w-3.5" /> Call 108
-              </a>
-              <button
-                type="button"
-                onClick={() => setView('ambulance')}
-                className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 rounded-xl bg-red-800/80 hover:bg-red-900/90 px-4 py-2.5 text-xs font-semibold text-white border border-white/20 transition-colors"
-              >
-                <Ambulance className="h-3.5 w-3.5" /> All Ambulances
-              </button>
-            </div>
-          </div>
 
           <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
             <DonationJourney
@@ -409,8 +374,6 @@ export function DonorDashboard() {
           )}
         </>
       )}
-
-      {view === 'ambulance' && <AmbulanceDirectory />}
 
       {view === 'profile' && <ProfileView onUpdated={refreshProfile} />}
 
