@@ -119,6 +119,18 @@ export function LandingPage({ onGetStarted, onLogin }: LandingPageProps) {
           </div>
         </section>
 
+        {/* ── Real Hospital & Donor Care Showcase ── */}
+        <section className="pb-10 max-w-5xl mx-auto px-4 sm:px-6">
+          <div className="relative rounded-3xl overflow-hidden border border-slate-200/90 dark:border-slate-800 bg-slate-900 shadow-2xl transition-all duration-300">
+            <img
+              src="/images/healthcare-grid.png"
+              alt="Specialist Doctors, Volunteer Blood Donors, Compassionate Helpers, Green Corridors"
+              className="w-full h-auto object-cover rounded-3xl"
+              loading="eager"
+            />
+          </div>
+        </section>
+
         {/* ── 3 Simple Feature Cards ── */}
         <section className="py-10 max-w-5xl mx-auto px-4 sm:px-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
