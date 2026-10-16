@@ -19,21 +19,28 @@ import {
   Eye,
   EyeOff,
   AlertCircle,
+  ArrowLeft,
 } from 'lucide-react';
 import { supabase, BLOOD_GROUPS } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import { Button, Select, Spinner } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { useLanguage } from '@/lib/i18n';
+import { ThemeToggle } from '@/lib/theme';
 
 type AuthMode = 'login' | 'signup';
 type RoleChoice = 'donor' | 'hospital_admin' | 'admin';
 
-export function AuthPage() {
+interface AuthPageProps {
+  onBack?: () => void;
+  initialRole?: RoleChoice;
+}
+
+export function AuthPage({ onBack, initialRole }: AuthPageProps = {}) {
   const { refreshProfile } = useAuth();
   const { language, setLanguage, t } = useLanguage();
   const [mode, setMode] = useState<AuthMode>('login');
-  const [role, setRole] = useState<RoleChoice>('donor');
+  const [role, setRole] = useState<RoleChoice>(initialRole || 'donor');
 
   // Form Fields
   const [email, setEmail] = useState('');
@@ -180,13 +187,25 @@ export function AuthPage() {
   const visibleRoleOptions = mode === 'signup' ? roleOptions.filter((option) => option.value !== 'admin') : roleOptions;
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col lg:grid lg:grid-cols-12 font-sans selection:bg-red-500 selection:text-white">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col lg:grid lg:grid-cols-12 font-sans selection:bg-red-500 selection:text-white transition-colors duration-200">
       {/* Left Panel — Simple, Clean & Elegant */}
       <div className="hidden bg-slate-900 lg:flex lg:col-span-5 xl:col-span-5 lg:flex-col lg:justify-between lg:p-12 text-white border-r border-slate-800">
-        {/* Logo */}
-        <div className="flex items-center gap-3">
-          <img src="/logo.png" alt="BloodFlow" className="h-10 w-10 rounded-xl bg-white p-1 object-cover shadow-sm" />
-          <span className="text-xl font-bold tracking-tight text-white">BloodFlow</span>
+        {/* Logo & Back button */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <img src="/logo.png" alt="BloodFlow" className="h-10 w-10 rounded-xl bg-white p-1 object-cover shadow-sm" />
+            <span className="text-xl font-bold tracking-tight text-white">BloodFlow</span>
+          </div>
+          {onBack && (
+            <button
+              onClick={onBack}
+              type="button"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-700 bg-slate-800/80 hover:bg-slate-750 text-xs font-semibold text-slate-300 hover:text-white transition-colors"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              <span>Back to Home</span>
+            </button>
+          )}
         </div>
 
         {/* Main Content */}
@@ -216,9 +235,12 @@ export function AuthPage() {
         </div>
 
         {/* Footer */}
-        <div className="border-t border-slate-800 pt-5 text-xs text-slate-500 flex items-center gap-2">
-          <ShieldCheck className="h-4 w-4 text-emerald-500" />
-          <span>Secure Healthcare Network</span>
+        <div className="border-t border-slate-800 pt-5 text-xs text-slate-500 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="h-4 w-4 text-emerald-500" />
+            <span>Secure Healthcare Network</span>
+          </div>
+          <span className="text-slate-600">24/7 Verified</span>
         </div>
       </div>
 
@@ -227,36 +249,64 @@ export function AuthPage() {
         <div className="w-full max-w-lg my-auto py-4">
           {/* Top Header & Language Picker */}
           <div className="flex items-center justify-between mb-6">
-            {/* Mobile Logo */}
-            <div className="flex items-center gap-2.5 lg:hidden">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-red-600 to-rose-600 p-1.5 shadow-md">
-                <Droplets className="h-5 w-5 text-white" />
-              </div>
-              <div>
-                <span className="text-base font-extrabold text-slate-900 leading-none block">BloodFlow</span>
-                <span className="text-[10px] font-bold text-red-600 uppercase tracking-wider block mt-0.5">Healthcare</span>
+            {/* Mobile Logo & Back */}
+            <div className="flex items-center gap-2.5">
+              {onBack && (
+                <button
+                  onClick={onBack}
+                  type="button"
+                  title="Back to Landing Page"
+                  className="lg:hidden inline-flex items-center justify-center h-9 w-9 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 shadow-xs"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                </button>
+              )}
+              <div className="flex items-center gap-2.5 lg:hidden">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-red-600 to-rose-600 p-1.5 shadow-md">
+                  <Droplets className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <span className="text-base font-extrabold text-slate-900 dark:text-slate-100 leading-none block">BloodFlow</span>
+                  <span className="text-[10px] font-bold text-red-600 uppercase tracking-wider block mt-0.5">Healthcare</span>
+                </div>
               </div>
             </div>
 
-            <div className="hidden lg:block" />
+            <div className="hidden lg:block">
+              {onBack && (
+                <button
+                  onClick={onBack}
+                  type="button"
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
+                >
+                  <ArrowLeft className="h-3.5 w-3.5" />
+                  <span>Back to Home</span>
+                </button>
+              )}
+            </div>
 
-            {/* Language Picker Dropdown */}
-            <div className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 shadow-xs text-xs text-slate-700">
-              <Globe className="h-3.5 w-3.5 text-slate-400" />
-              <select
-                aria-label={t('language')}
-                value={language}
-                onChange={(event) => setLanguage(event.target.value as 'en' | 'hi')}
-                className="bg-transparent text-xs font-semibold text-slate-700 focus:outline-none cursor-pointer"
-              >
-                <option value="en">English</option>
-                <option value="hi">हिंदी</option>
-              </select>
+            {/* Top Right Actions: ThemeToggle + Language Picker */}
+            <div className="flex items-center gap-2">
+              <ThemeToggle />
+
+              {/* Language Picker Dropdown */}
+              <div className="flex items-center gap-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-1 text-xs text-slate-700 dark:text-slate-200 shadow-xs">
+                <Globe className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                <select
+                  aria-label={t('language')}
+                  value={language}
+                  onChange={(event) => setLanguage(event.target.value as 'en' | 'hi')}
+                  className="bg-transparent text-xs font-semibold text-slate-700 dark:text-slate-200 focus:outline-none cursor-pointer"
+                >
+                  <option value="en" className="dark:bg-slate-900">EN</option>
+                  <option value="hi" className="dark:bg-slate-900">हिंदी</option>
+                </select>
+              </div>
             </div>
           </div>
 
           {/* Elevated Floating Form Card */}
-          <div className="rounded-3xl border border-slate-200/90 bg-white p-6 sm:p-10 shadow-xl shadow-slate-200/60 transition-all duration-300">
+          <div className="rounded-3xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 sm:p-10 shadow-xl shadow-slate-200/60 dark:shadow-none transition-all duration-300 text-slate-900 dark:text-slate-100">
             {/* Form Title & Mode Subtitle */}
             <div className="mb-6">
               <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900">

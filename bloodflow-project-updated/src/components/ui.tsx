@@ -23,15 +23,15 @@ const variantClasses: Record<ButtonVariant, string> = {
   secondary:
     'bg-slate-900 text-white hover:bg-slate-800 active:bg-slate-950 shadow-xs focus:ring-slate-600 border border-transparent font-medium',
   outline:
-    'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-900 hover:border-slate-300 shadow-xs focus:ring-brand-500 font-medium',
+    'border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white hover:border-slate-300 shadow-xs focus:ring-brand-500 font-medium',
   teal:
     'bg-teal-600 text-white hover:bg-teal-700 active:bg-teal-800 shadow-xs focus:ring-teal-500 border border-transparent font-medium',
   danger:
     'bg-emergency-600 text-white hover:bg-emergency-700 active:bg-emergency-800 shadow-xs focus:ring-emergency-500 border border-transparent font-medium',
   'danger-subtle':
-    'border border-emergency-200 bg-emergency-50/70 text-emergency-700 hover:bg-emergency-100 hover:border-emergency-300 focus:ring-emergency-400 font-medium',
+    'border border-emergency-200 dark:border-emergency-800/60 bg-emergency-50/70 dark:bg-emergency-950/40 text-emergency-700 dark:text-emergency-300 hover:bg-emergency-100 focus:ring-emergency-400 font-medium',
   ghost:
-    'text-slate-600 hover:bg-slate-100 hover:text-slate-900 focus:ring-slate-300 font-medium',
+    'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white focus:ring-slate-300 font-medium',
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
@@ -107,7 +107,7 @@ export function Input({
   return (
     <div className={cn('w-full', className)}>
       {label && (
-        <label className="mb-1.5 flex items-center justify-between text-xs font-semibold text-slate-700">
+        <label className="mb-1.5 flex items-center justify-between text-xs font-semibold text-slate-700 dark:text-slate-300">
           <span>
             {label} {required && <span className="text-emergency-500 font-bold">*</span>}
           </span>
@@ -129,11 +129,11 @@ export function Input({
           max={max}
           autoComplete={autoComplete}
           className={cn(
-            'w-full rounded-lg border bg-white px-3.5 py-2 text-sm text-slate-900 placeholder-slate-400 shadow-xs transition-colors duration-150',
+            'w-full rounded-lg border bg-white dark:bg-slate-800 px-3.5 py-2 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 shadow-xs transition-colors duration-150',
             'focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-600',
             error
-              ? 'border-emergency-300 focus:border-emergency-500 focus:ring-emergency-500/20'
-              : 'border-slate-200 hover:border-slate-300',
+              ? 'border-emergency-300 dark:border-emergency-500 focus:border-emergency-500 focus:ring-emergency-500/20'
+              : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600',
             icon && 'pl-9',
           )}
         />
@@ -165,7 +165,7 @@ export function Select({ label, value, onChange, options, placeholder, required,
   return (
     <div className={cn('w-full', className)}>
       {label && (
-        <label className="mb-1.5 flex items-center justify-between text-xs font-semibold text-slate-700">
+        <label className="mb-1.5 flex items-center justify-between text-xs font-semibold text-slate-700 dark:text-slate-300">
           <span>
             {label} {required && <span className="text-emergency-500 font-bold">*</span>}
           </span>
@@ -182,11 +182,11 @@ export function Select({ label, value, onChange, options, placeholder, required,
           onChange={(e) => onChange(e.target.value)}
           required={required}
           className={cn(
-            'w-full appearance-none rounded-lg border bg-white px-3.5 py-2 text-sm text-slate-900 shadow-xs transition-colors duration-150',
+            'w-full appearance-none rounded-lg border bg-white dark:bg-slate-800 px-3.5 py-2 text-sm text-slate-900 dark:text-slate-100 shadow-xs transition-colors duration-150',
             'focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-600 cursor-pointer',
             error
-              ? 'border-emergency-300 focus:border-emergency-500 focus:ring-emergency-500/20'
-              : 'border-slate-200 hover:border-slate-300',
+              ? 'border-emergency-300 dark:border-emergency-500 focus:border-emergency-500 focus:ring-emergency-500/20'
+              : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600',
             icon && 'pl-9',
           )}
         >
@@ -224,31 +224,31 @@ type BadgeProps = {
 
 const badgeVariants: Record<BadgeVariant, { container: string; dot: string }> = {
   red: {
-    container: 'bg-emergency-50 text-emergency-700 border-emergency-200/70',
+    container: 'bg-emergency-50 dark:bg-emergency-950/60 text-emergency-700 dark:text-emergency-300 border-emergency-200/70 dark:border-emergency-800/60',
     dot: 'bg-emergency-500',
   },
   green: {
-    container: 'bg-emerald-50 text-emerald-700 border-emerald-200/70',
+    container: 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200/70 dark:border-emerald-800/60',
     dot: 'bg-emerald-500',
   },
   yellow: {
-    container: 'bg-amber-50 text-amber-800 border-amber-200/70',
+    container: 'bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border-amber-200/70 dark:border-amber-800/60',
     dot: 'bg-amber-500',
   },
   blue: {
-    container: 'bg-brand-50 text-brand-700 border-brand-200/70',
+    container: 'bg-brand-50 dark:bg-brand-950/60 text-brand-700 dark:text-brand-300 border-brand-200/70 dark:border-brand-800/60',
     dot: 'bg-brand-500',
   },
   teal: {
-    container: 'bg-teal-50 text-teal-700 border-teal-200/70',
+    container: 'bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 border-teal-200/70 dark:border-teal-800/60',
     dot: 'bg-teal-500',
   },
   gray: {
-    container: 'bg-slate-100 text-slate-600 border-slate-200/70',
-    dot: 'bg-slate-400',
+    container: 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200/70 dark:border-slate-700',
+    dot: 'bg-slate-400 dark:bg-slate-500',
   },
   purple: {
-    container: 'bg-purple-50 text-purple-700 border-purple-200/70',
+    container: 'bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border-purple-200/70 dark:border-purple-800/60',
     dot: 'bg-purple-500',
   },
 };
@@ -279,8 +279,8 @@ export function Card({ children, className, hover }: CardProps) {
   return (
     <div
       className={cn(
-        'rounded-xl border border-slate-200/90 bg-white shadow-card transition-all duration-200',
-        hover && 'hover:border-slate-300 hover:shadow-elevated',
+        'rounded-xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-card transition-all duration-200 text-slate-900 dark:text-slate-100',
+        hover && 'hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-elevated',
         className,
       )}
     >
@@ -303,25 +303,25 @@ export function Modal({ children, open, onClose, title, description, maxWidth = 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
       <div
-        className="fixed inset-0 bg-slate-950/40 backdrop-blur-xs transition-opacity duration-200"
+        className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs transition-opacity duration-200"
         onClick={onClose}
         aria-hidden="true"
       />
       <div
         className={cn(
-          'relative z-10 w-full rounded-2xl border border-slate-100 bg-white shadow-elevated transition-all duration-200 my-auto',
+          'relative z-10 w-full rounded-2xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-elevated transition-all duration-200 my-auto text-slate-900 dark:text-slate-100',
           maxWidth,
         )}
       >
         {title && (
-          <div className="flex items-start justify-between border-b border-slate-100 px-6 py-4">
+          <div className="flex items-start justify-between border-b border-slate-100 dark:border-slate-800 px-6 py-4">
             <div>
-              <h2 className="text-lg font-bold text-slate-900">{title}</h2>
-              {description && <p className="mt-0.5 text-xs text-slate-500">{description}</p>}
+              <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">{title}</h2>
+              {description && <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{description}</p>}
             </div>
             <button
               onClick={onClose}
-              className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 focus:outline-none focus:ring-2 focus:ring-brand-500"
+              className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-600 dark:hover:text-slate-200 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500"
               aria-label="Close dialog"
             >
               <X className="h-5 w-5" />
@@ -365,18 +365,18 @@ type EmptyStateProps = {
 export function EmptyState({ icon, title, description, action }: EmptyStateProps) {
   return (
     <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
-      <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-50/80 border border-brand-100 text-brand-600 shadow-xs">
+      <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-50/80 dark:bg-brand-950/60 border border-brand-100 dark:border-brand-900/60 text-brand-600 dark:text-brand-400 shadow-xs">
         {icon}
       </div>
-      <h3 className="mb-1 text-base font-semibold text-slate-900">{title}</h3>
-      <p className="max-w-sm text-xs sm:text-sm text-slate-500">{description}</p>
+      <h3 className="mb-1 text-base font-semibold text-slate-900 dark:text-slate-100">{title}</h3>
+      <p className="max-w-sm text-xs sm:text-sm text-slate-500 dark:text-slate-400">{description}</p>
       {action && <div className="mt-4">{action}</div>}
     </div>
   );
 }
 
 export function Skeleton({ className }: { className?: string }) {
-  return <div className={cn('animate-pulse rounded-md bg-slate-200/80', className)} />;
+  return <div className={cn('animate-pulse rounded-md bg-slate-200/80 dark:bg-slate-800', className)} />;
 }
 
 export function ConfirmDialog({
@@ -403,7 +403,7 @@ export function ConfirmDialog({
   if (!open) return null;
   return (
     <Modal open onClose={onClose} title={title} maxWidth="max-w-md">
-      <p className="text-sm text-slate-600 leading-relaxed">{message}</p>
+      <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">{message}</p>
       <div className="mt-6 flex justify-end gap-2.5">
         <Button variant="outline" size="sm" onClick={onClose} disabled={loading}>
           {cancelText}

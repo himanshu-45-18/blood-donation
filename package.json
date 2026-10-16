@@ -1,0 +1,13 @@
+{
+  "name": "bloodflow-project-root",
+  "version": "1.0.0",
+  "private": true,
+  "description": "BloodFlow Healthcare Platform - Root Launcher",
+  "scripts": {
+    "dev": "npm --prefix bloodflow-project-updated run dev",
+    "build": "npm --prefix bloodflow-project-updated run build",
+    "start": "npm --prefix bloodflow-project-updated run dev",
+    "preview": "npm --prefix bloodflow-project-updated run preview"
+  }
+}
+

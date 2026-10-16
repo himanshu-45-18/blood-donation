@@ -99,7 +99,8 @@ export function HospitalDashboard() {
     { id: 'donors', label: tr('Incoming Donors'), icon: <Users className="h-4 w-4" /> },
     { id: 'inventory', label: 'Blood Inventory', icon: <Droplet className="h-4 w-4" /> },
     { id: 'emergency', label: 'Emergency Requests', icon: <AlertTriangle className="h-4 w-4" /> },
-    { id: 'iot', label: 'Smart Blood Bank IoT', icon: <Cpu className="h-4 w-4" /> },
+    // IoT section temporarily disabled as requested (can be re-enabled anytime)
+    // { id: 'iot', label: 'Smart Blood Bank IoT', icon: <Cpu className="h-4 w-4" /> },
     { id: 'settings', label: tr('Hospital Settings'), icon: <Building2 className="h-4 w-4" /> },
     { id: 'rewards', label: 'Rewards', icon: <Award className="h-4 w-4" /> },
   ];
@@ -473,7 +474,8 @@ export function HospitalDashboard() {
 
       {view === 'settings' && <HospitalSettings hospital={hospital} onUpdated={loadData} />}
 
-      {view === 'iot' && <SmartBloodBankIoT hospital={hospital} />}
+      {/* IoT section temporarily disabled as requested */}
+      {/* {view === 'iot' && <SmartBloodBankIoT hospital={hospital} />} */}
 
       {view === 'rewards' && (
         <>

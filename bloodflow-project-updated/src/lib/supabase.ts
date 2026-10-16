@@ -233,4 +233,46 @@ export type EmergencyEvent = {
   created_at: string;
 };
 
+// Ambulance Service Types
+export type AmbulanceServiceType = 'ALS_ICU' | 'BLS' | 'PATIENT_TRANSPORT' | 'BLOOD_TRANSPORT';
 
+export type AmbulanceService = {
+  id: string;
+  name: string;
+  service_type: AmbulanceServiceType;
+  phone: string;
+  alternate_phone?: string | null;
+  city: string;
+  area?: string | null;
+  available_24_7: boolean;
+  average_eta_mins: number;
+  hospital_affiliation?: string | null;
+  created_at?: string;
+};
+
+export type AmbulanceRequestStatus = 'REQUESTED' | 'DISPATCHED' | 'EN_ROUTE' | 'COMPLETED' | 'CANCELLED';
+
+export type AmbulanceRequest = {
+  id: string;
+  donor_id?: string | null;
+  service_id?: string | null;
+  caller_name: string;
+  caller_phone: string;
+  pickup_address: string;
+  city: string;
+  urgency: 'CRITICAL' | 'URGENT' | 'STANDARD';
+  patient_condition?: string | null;
+  status: AmbulanceRequestStatus;
+  created_at?: string;
+  service?: AmbulanceService;
+};
+
+export type EmergencyAmbulanceSetting = {
+  id: string;
+  service_name: string;
+  twilio_from_number: string;
+  twilio_to_number: string;
+  notes?: string | null;
+  is_active: boolean;
+  updated_at?: string;
+};
