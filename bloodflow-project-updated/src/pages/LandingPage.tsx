@@ -8,6 +8,8 @@ import {
   Download,
   Smartphone,
   Award,
+  CheckCircle2,
+  Users,
 } from 'lucide-react';
 import { ThemeToggle } from '@/lib/theme';
 import { useLanguage } from '@/lib/i18n';
@@ -20,6 +22,8 @@ interface LandingPageProps {
 export function LandingPage({ onGetStarted, onLogin }: LandingPageProps) {
   const { language, setLanguage } = useLanguage();
 
+  const bloodGroups = ['O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'];
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors duration-200">
       {/* ── Minimal Navigation Bar ── */}
@@ -27,15 +31,15 @@ export function LandingPage({ onGetStarted, onLogin }: LandingPageProps) {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           {/* Logo */}
           <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-red-600 to-rose-600 p-2 shadow-sm text-white">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-red-600 text-white shadow-xs">
               <Droplets className="h-5 w-5" />
             </div>
             <div>
-              <span className="text-lg font-black tracking-tight text-slate-900 dark:text-white leading-none block">
+              <span className="text-lg font-bold tracking-tight text-slate-900 dark:text-white leading-none block">
                 BloodFlow
               </span>
-              <span className="text-[10px] font-bold text-red-600 dark:text-red-400 uppercase tracking-widest block">
-                Healthcare
+              <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mt-0.5">
+                Healthcare Network
               </span>
             </div>
           </div>
@@ -61,14 +65,14 @@ export function LandingPage({ onGetStarted, onLogin }: LandingPageProps) {
 
             <button
               onClick={onLogin}
-              className="hidden sm:inline-flex items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all shadow-xs"
+              className="hidden sm:inline-flex items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all shadow-xs"
             >
               Sign In
             </button>
 
             <button
               onClick={onGetStarted}
-              className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 px-4 py-2 text-xs font-bold text-white shadow-sm shadow-red-500/20 active:scale-95 transition-all"
+              className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-red-600 hover:bg-red-700 px-4 py-2 text-xs font-semibold text-white shadow-xs active:scale-95 transition-all"
             >
               <span>Get Started</span>
               <ArrowRight className="h-3.5 w-3.5" />
@@ -77,90 +81,107 @@ export function LandingPage({ onGetStarted, onLogin }: LandingPageProps) {
         </div>
       </header>
 
-      {/* ── Simple Clean Hero Section ── */}
+      {/* ── Human, Clean, Direct Hero Section ── */}
       <main className="flex-1">
-        <section className="py-14 sm:py-20 max-w-4xl mx-auto px-4 sm:px-6 text-center">
-          {/* Subtle Live Badge */}
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-red-200 dark:border-red-900/60 bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 text-xs font-semibold mb-6">
-            <span className="flex h-2 w-2 rounded-full bg-red-600 animate-pulse" />
-            <span>24/7 Real-Time Lifesaving Blood Network</span>
+        <section className="pt-16 pb-12 sm:pt-20 sm:pb-16 max-w-4xl mx-auto px-4 sm:px-6 text-center">
+          {/* Subtle Verified Network Label */}
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 text-xs font-medium mb-6 shadow-xs">
+            <ShieldCheck className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+            <span>Verified Blood Donation &amp; Hospital Registry</span>
           </div>
 
-          {/* Clean Main Title */}
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-slate-900 dark:text-white leading-[1.15]">
-            Every Drop Counts.{' '}
-            <span className="bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 bg-clip-text text-transparent">
-              Every Second Matters.
+          {/* Clean, Non-AI Human Headline */}
+          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-[1.18]">
+            Connecting voluntary blood donors with hospitals in{' '}
+            <span className="text-red-600 dark:text-red-500 underline decoration-red-200 dark:decoration-red-950 underline-offset-4">
+              real need
             </span>
+            .
           </h1>
 
-          {/* Subtitle */}
+          {/* Simple, Honest Subtitle */}
           <p className="mt-5 text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed max-w-2xl mx-auto font-normal">
-            BloodFlow connects voluntary blood donors and verified hospital blood banks into one fast, reliable platform to save lives quickly and efficiently.
+            A reliable medical platform built to eliminate shortages. Check live blood stock across partner facilities, schedule voluntary donations, and support emergency patients.
           </p>
 
           {/* Main Action Buttons */}
           <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
             <button
               onClick={onGetStarted}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 px-6 py-3 text-sm font-bold text-white shadow-md shadow-red-500/20 active:scale-95 transition-all"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 hover:bg-red-700 px-6 py-3 text-sm font-semibold text-white shadow-xs active:scale-95 transition-all"
             >
               <Heart className="h-4 w-4" />
-              <span>Register as Donor</span>
+              <span>Register as a Donor</span>
             </button>
 
             <button
               onClick={onLogin}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 px-6 py-3 text-sm font-bold text-slate-800 dark:text-slate-200 shadow-xs transition-all"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 px-6 py-3 text-sm font-semibold text-slate-800 dark:text-slate-200 shadow-xs transition-all"
             >
-              <Building2 className="h-4 w-4 text-red-600" />
-              <span>Hospital &amp; Admin Login</span>
+              <Building2 className="h-4 w-4 text-slate-500 dark:text-slate-400" />
+              <span>Hospital &amp; Admin Portal</span>
             </button>
+          </div>
+
+          {/* Active Blood Group Checker Strip */}
+          <div className="mt-10 pt-6 border-t border-slate-200/80 dark:border-slate-800 flex flex-wrap items-center justify-center gap-2">
+            <span className="text-xs font-medium text-slate-500 dark:text-slate-400 mr-1">
+              Supported Blood Groups:
+            </span>
+            {bloodGroups.map((group) => (
+              <span
+                key={group}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-2.5 py-1 text-xs font-bold text-slate-800 dark:text-slate-200 shadow-xs"
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-red-600" />
+                {group}
+              </span>
+            ))}
           </div>
         </section>
 
-        {/* ── Real Hospital & Donor Care Showcase ── */}
-        <section className="pb-10 max-w-5xl mx-auto px-4 sm:px-6">
-          <div className="relative rounded-3xl overflow-hidden border border-slate-200/90 dark:border-slate-800 bg-slate-900 shadow-2xl transition-all duration-300">
+        {/* ── Real Hospital & Donor Care Showcase (User Photo Grid) ── */}
+        <section className="pb-12 max-w-5xl mx-auto px-4 sm:px-6">
+          <div className="relative rounded-2xl overflow-hidden border border-slate-200/90 dark:border-slate-800 bg-slate-900 shadow-xl transition-all duration-300">
             <img
               src="/images/healthcare-grid.png"
               alt="Specialist Doctors, Volunteer Blood Donors, Compassionate Helpers, Green Corridors"
-              className="w-full h-auto object-cover rounded-3xl"
+              className="w-full h-auto object-cover rounded-2xl"
               loading="eager"
             />
           </div>
         </section>
 
-        {/* ── 3 Simple Feature Cards ── */}
-        <section className="py-10 max-w-5xl mx-auto px-4 sm:px-6">
+        {/* ── 3 Grounded, Honest Feature Cards ── */}
+        <section className="py-8 max-w-5xl mx-auto px-4 sm:px-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            <div className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-red-50 dark:bg-red-950/60 text-red-600 dark:text-red-400 mb-4">
+            <div className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-xs">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-50 dark:bg-red-950/60 text-red-600 dark:text-red-400 mb-4">
                 <Droplets className="h-5 w-5" />
               </div>
-              <h2 className="text-base font-bold text-slate-900 dark:text-white">Instant Blood Matching</h2>
-              <p className="mt-2 text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                Connect compatible donors directly with urgent hospital patient requirements in real-time.
+              <h2 className="text-base font-bold text-slate-900 dark:text-white">Live Inventory Tracking</h2>
+              <p className="mt-2 text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-normal">
+                Hospitals monitor blood units across all 8 blood groups in real time to avoid shortages and unnecessary waste.
               </p>
             </div>
 
-            <div className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50 dark:bg-brand-950/60 text-brand-600 dark:text-brand-400 mb-4">
+            <div className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-xs">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 mb-4">
                 <Building2 className="h-5 w-5" />
               </div>
-              <h2 className="text-base font-bold text-slate-900 dark:text-white">Hospital Network</h2>
-              <p className="mt-2 text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                Live blood inventory management, emergency broadcast alerts, and verified donation scheduling.
+              <h2 className="text-base font-bold text-slate-900 dark:text-white">Hospital Direct Broadcast</h2>
+              <p className="mt-2 text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-normal">
+                Approved medical centers broadcast urgent patient blood requirements directly to compatible local donors.
               </p>
             </div>
 
-            <div className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 mb-4">
+            <div className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-xs">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 mb-4">
                 <Award className="h-5 w-5" />
               </div>
-              <h2 className="text-base font-bold text-slate-900 dark:text-white">Rewards &amp; Certificates</h2>
-              <p className="mt-2 text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                Earn verified digital donation certificates and recognition badges for every verified contribution.
+              <h2 className="text-base font-bold text-slate-900 dark:text-white">Verified Certificates</h2>
+              <p className="mt-2 text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-normal">
+                Donors earn verified digital contribution certificates and maintain their lifetime donation history securely.
               </p>
             </div>
           </div>
@@ -168,22 +189,22 @@ export function LandingPage({ onGetStarted, onLogin }: LandingPageProps) {
 
         {/* ── App Download Card (Landing Page Only) ── */}
         <section className="py-10 max-w-4xl mx-auto px-4 sm:px-6">
-          <div className="rounded-2xl bg-gradient-to-r from-slate-900 via-slate-850 to-red-950 text-white p-6 sm:p-8 shadow-xl border border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-6">
+          <div className="rounded-2xl bg-slate-900 text-white p-6 sm:p-8 shadow-lg border border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-red-600/30 text-red-400 border border-red-500/30">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-slate-800 text-red-400 border border-slate-700">
                 <Smartphone className="h-6 w-6" />
               </div>
               <div>
-                <h2 className="text-lg font-bold text-white">Download BloodFlow Mobile App</h2>
+                <h2 className="text-lg font-bold text-white">BloodFlow Mobile App</h2>
                 <p className="text-xs text-slate-300 mt-1">
-                  Get the official Android APK for fast donation scheduling, status tracking, and certificates.
+                  Download the official Android APK for fast donation slot booking and digital certificate access.
                 </p>
               </div>
             </div>
             <a
               href="/BloodFlow.apk"
               download="BloodFlow.apk"
-              className="shrink-0 inline-flex items-center gap-2 rounded-xl bg-red-600 hover:bg-red-700 text-white px-5 py-2.5 text-xs font-bold shadow-md shadow-red-600/30 active:scale-95 transition-all"
+              className="shrink-0 inline-flex items-center gap-2 rounded-xl bg-red-600 hover:bg-red-700 text-white px-5 py-2.5 text-xs font-semibold shadow-xs active:scale-95 transition-all"
             >
               <Download className="h-4 w-4" />
               <span>Download APK</span>
@@ -192,22 +213,22 @@ export function LandingPage({ onGetStarted, onLogin }: LandingPageProps) {
         </section>
       </main>
 
-      {/* ── Clean Footer ── */}
+      {/* ── Clean Human Footer ── */}
       <footer className="mt-auto border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 py-6 text-xs text-slate-500 dark:text-slate-400 transition-colors">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <ShieldCheck className="h-4 w-4 text-emerald-500" />
+            <ShieldCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
             <span className="font-semibold text-slate-700 dark:text-slate-300">BloodFlow Healthcare Network</span>
           </div>
           <div className="flex items-center gap-4">
-            <button onClick={onLogin} className="hover:text-red-600 dark:hover:text-red-400 transition-colors">
-              Sign In
+            <button onClick={onLogin} className="hover:text-slate-900 dark:hover:text-white transition-colors">
+              Hospital Portal
             </button>
-            <button onClick={onGetStarted} className="hover:text-red-600 dark:hover:text-red-400 transition-colors">
-              Register
+            <button onClick={onGetStarted} className="hover:text-slate-900 dark:hover:text-white transition-colors">
+              Donor Registration
             </button>
           </div>
-          <p>© {new Date().getFullYear()} BloodFlow. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} BloodFlow. Voluntary healthcare initiative.</p>
         </div>
       </footer>
     </div>
