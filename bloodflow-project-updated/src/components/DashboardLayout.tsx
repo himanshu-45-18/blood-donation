@@ -22,7 +22,7 @@ type DashboardLayoutProps = {
 
 export function DashboardLayout({ children, navItems, activeView, onNavigate, roleLabel }: DashboardLayoutProps) {
   const { profile, signOut } = useAuth();
-  const { language, setLanguage, t } = useLanguage();
+  const { language, setLanguage, t, tr } = useLanguage();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const roleIcon =
@@ -57,7 +57,7 @@ export function DashboardLayout({ children, navItems, activeView, onNavigate, ro
 
         {/* Navigation list */}
         <nav className="flex-1 space-y-1.5 p-4 overflow-y-auto">
-          <div className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Navigation</div>
+          <div className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">{tr('Navigation')}</div>
           {navItems.map((item) => {
             const isActive = activeView === item.id;
             return (
@@ -77,7 +77,7 @@ export function DashboardLayout({ children, navItems, activeView, onNavigate, ro
                 <span className={cn('transition-colors', isActive ? 'text-brand-600 dark:text-brand-400' : 'text-slate-400 dark:text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-300')}>
                   {item.icon}
                 </span>
-                <span className="truncate">{translatedNavLabel(item.id, item.label, t)}</span>
+                <span className="truncate">{translatedNavLabel(item.id, item.label, t, tr)}</span>
               </button>
             );
           })}
@@ -95,7 +95,7 @@ export function DashboardLayout({ children, navItems, activeView, onNavigate, ro
               </p>
               <div className="flex items-center gap-1 mt-0.5">
                 {roleIcon}
-                <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 capitalize leading-none">{roleLabel}</span>
+                <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 capitalize leading-none">{tr(roleLabel)}</span>
               </div>
             </div>
             <button
@@ -169,7 +169,7 @@ export function DashboardLayout({ children, navItems, activeView, onNavigate, ro
                     )}
                   >
                     <span className={isActive ? 'text-brand-600' : 'text-slate-400'}>{item.icon}</span>
-                    <span className="truncate">{translatedNavLabel(item.id, item.label, t)}</span>
+                    <span className="truncate">{translatedNavLabel(item.id, item.label, t, tr)}</span>
                   </button>
                 );
               })}
@@ -181,7 +181,7 @@ export function DashboardLayout({ children, navItems, activeView, onNavigate, ro
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-xs font-semibold text-slate-900 dark:text-slate-100">{profile?.full_name || 'User'}</p>
-                  <p className="truncate text-[11px] text-slate-500 dark:text-slate-400">{roleLabel}</p>
+                  <p className="truncate text-[11px] text-slate-500 dark:text-slate-400">{tr(roleLabel)}</p>
                 </div>
               </div>
               <button
@@ -208,6 +208,7 @@ function translatedNavLabel(
   id: string,
   fallback: string,
   t: (key: 'overview' | 'incomingDonors' | 'bloodInventory' | 'emergencyRequests' | 'settings' | 'donors' | 'appointments' | 'certificates' | 'allHospitals') => string,
+  tr?: (text: string) => string,
 ) {
   const labels = {
     overview: 'overview',
@@ -219,7 +220,10 @@ function translatedNavLabel(
     certificates: 'certificates',
     hospitals: 'allHospitals',
   } as const;
-  return id in labels ? t(labels[id as keyof typeof labels]) : fallback;
+  if (id in labels) {
+    return t(labels[id as keyof typeof labels]);
+  }
+  return tr ? tr(fallback) : fallback;
 }
 
 function LanguageSwitcher({ language, setLanguage, label }: { language: Language; setLanguage: (language: Language) => void; label: string }) {

@@ -20,7 +20,7 @@ interface LandingPageProps {
 }
 
 export function LandingPage({ onGetStarted, onLogin }: LandingPageProps) {
-  const { language, setLanguage } = useLanguage();
+  const { language, setLanguage, tr } = useLanguage();
 
   const bloodGroups = ['O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'];
 
@@ -39,7 +39,7 @@ export function LandingPage({ onGetStarted, onLogin }: LandingPageProps) {
                 BloodFlow
               </span>
               <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mt-0.5">
-                Healthcare Network
+                {tr('Healthcare Network')}
               </span>
             </div>
           </div>
@@ -67,14 +67,14 @@ export function LandingPage({ onGetStarted, onLogin }: LandingPageProps) {
               onClick={onLogin}
               className="hidden sm:inline-flex items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all shadow-xs"
             >
-              Sign In
+              {tr('Sign In')}
             </button>
 
             <button
               onClick={onGetStarted}
               className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-red-600 hover:bg-red-700 px-4 py-2 text-xs font-semibold text-white shadow-xs active:scale-95 transition-all"
             >
-              <span>Get Started</span>
+              <span>{tr('Get Started')}</span>
               <ArrowRight className="h-3.5 w-3.5" />
             </button>
           </div>
@@ -87,21 +87,27 @@ export function LandingPage({ onGetStarted, onLogin }: LandingPageProps) {
           {/* Subtle Verified Network Label */}
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 text-xs font-medium mb-6 shadow-xs">
             <ShieldCheck className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-            <span>Verified Blood Donation &amp; Hospital Registry</span>
+            <span>{tr('Verified Blood Donation & Hospital Registry')}</span>
           </div>
 
           {/* Clean, Non-AI Human Headline */}
           <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-[1.18]">
-            Connecting voluntary blood donors with hospitals in{' '}
-            <span className="text-red-600 dark:text-red-500 underline decoration-red-200 dark:decoration-red-950 underline-offset-4">
-              real need
-            </span>
-            .
+            {language === 'hi' ? (
+              tr('Connecting voluntary blood donors with hospitals in real need.')
+            ) : (
+              <>
+                Connecting voluntary blood donors with hospitals in{' '}
+                <span className="text-red-600 dark:text-red-500 underline decoration-red-200 dark:decoration-red-950 underline-offset-4">
+                  real need
+                </span>
+                .
+              </>
+            )}
           </h1>
 
           {/* Simple, Honest Subtitle */}
           <p className="mt-5 text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed max-w-2xl mx-auto font-normal">
-            A reliable medical platform built to eliminate shortages. Check live blood stock across partner facilities, schedule voluntary donations, and support emergency patients.
+            {tr('A reliable medical platform built to eliminate shortages. Check live blood stock across partner facilities, schedule voluntary donations, and support emergency patients.')}
           </p>
 
           {/* Main Action Buttons */}
@@ -111,7 +117,7 @@ export function LandingPage({ onGetStarted, onLogin }: LandingPageProps) {
               className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 hover:bg-red-700 px-6 py-3 text-sm font-semibold text-white shadow-xs active:scale-95 transition-all"
             >
               <Heart className="h-4 w-4" />
-              <span>Register as a Donor</span>
+              <span>{tr('Register as a Donor')}</span>
             </button>
 
             <button
@@ -119,14 +125,14 @@ export function LandingPage({ onGetStarted, onLogin }: LandingPageProps) {
               className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 px-6 py-3 text-sm font-semibold text-slate-800 dark:text-slate-200 shadow-xs transition-all"
             >
               <Building2 className="h-4 w-4 text-slate-500 dark:text-slate-400" />
-              <span>Hospital &amp; Admin Portal</span>
+              <span>{tr('Hospital & Admin Portal')}</span>
             </button>
           </div>
 
           {/* Active Blood Group Checker Strip */}
           <div className="mt-10 pt-6 border-t border-slate-200/80 dark:border-slate-800 flex flex-wrap items-center justify-center gap-2">
             <span className="text-xs font-medium text-slate-500 dark:text-slate-400 mr-1">
-              Supported Blood Groups:
+              {tr('Supported Blood Groups:')}
             </span>
             {bloodGroups.map((group) => (
               <span
@@ -159,9 +165,9 @@ export function LandingPage({ onGetStarted, onLogin }: LandingPageProps) {
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-50 dark:bg-red-950/60 text-red-600 dark:text-red-400 mb-4">
                 <Droplets className="h-5 w-5" />
               </div>
-              <h2 className="text-base font-bold text-slate-900 dark:text-white">Live Inventory Tracking</h2>
+              <h2 className="text-base font-bold text-slate-900 dark:text-white">{tr('Live Inventory Tracking')}</h2>
               <p className="mt-2 text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-normal">
-                Hospitals monitor blood units across all 8 blood groups in real time to avoid shortages and unnecessary waste.
+                {tr('Hospitals monitor blood units across all 8 blood groups in real time to avoid shortages and unnecessary waste.')}
               </p>
             </div>
 
@@ -169,9 +175,9 @@ export function LandingPage({ onGetStarted, onLogin }: LandingPageProps) {
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 mb-4">
                 <Building2 className="h-5 w-5" />
               </div>
-              <h2 className="text-base font-bold text-slate-900 dark:text-white">Hospital Direct Broadcast</h2>
+              <h2 className="text-base font-bold text-slate-900 dark:text-white">{tr('Hospital Direct Broadcast')}</h2>
               <p className="mt-2 text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-normal">
-                Approved medical centers broadcast urgent patient blood requirements directly to compatible local donors.
+                {tr('Approved medical centers broadcast urgent patient blood requirements directly to compatible local donors.')}
               </p>
             </div>
 
@@ -179,9 +185,9 @@ export function LandingPage({ onGetStarted, onLogin }: LandingPageProps) {
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 mb-4">
                 <Award className="h-5 w-5" />
               </div>
-              <h2 className="text-base font-bold text-slate-900 dark:text-white">Verified Certificates</h2>
+              <h2 className="text-base font-bold text-slate-900 dark:text-white">{tr('Verified Certificates')}</h2>
               <p className="mt-2 text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-normal">
-                Donors earn verified digital contribution certificates and maintain their lifetime donation history securely.
+                {tr('Donors earn verified digital contribution certificates and maintain their lifetime donation history securely.')}
               </p>
             </div>
           </div>
@@ -195,9 +201,9 @@ export function LandingPage({ onGetStarted, onLogin }: LandingPageProps) {
                 <Smartphone className="h-6 w-6" />
               </div>
               <div>
-                <h2 className="text-lg font-bold text-white">BloodFlow Mobile App</h2>
+                <h2 className="text-lg font-bold text-white">{tr('BloodFlow Mobile App')}</h2>
                 <p className="text-xs text-slate-300 mt-1">
-                  Download the official Android APK for fast donation slot booking and digital certificate access.
+                  {tr('Download the official Android APK for fast donation slot booking and digital certificate access.')}
                 </p>
               </div>
             </div>
@@ -207,7 +213,7 @@ export function LandingPage({ onGetStarted, onLogin }: LandingPageProps) {
               className="shrink-0 inline-flex items-center gap-2 rounded-xl bg-red-600 hover:bg-red-700 text-white px-5 py-2.5 text-xs font-semibold shadow-xs active:scale-95 transition-all"
             >
               <Download className="h-4 w-4" />
-              <span>Download APK</span>
+              <span>{tr('Download APK')}</span>
             </a>
           </div>
         </section>
@@ -218,17 +224,17 @@ export function LandingPage({ onGetStarted, onLogin }: LandingPageProps) {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <ShieldCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-            <span className="font-semibold text-slate-700 dark:text-slate-300">BloodFlow Healthcare Network</span>
+            <span className="font-semibold text-slate-700 dark:text-slate-300">{tr('BloodFlow Healthcare Network')}</span>
           </div>
           <div className="flex items-center gap-4">
             <button onClick={onLogin} className="hover:text-slate-900 dark:hover:text-white transition-colors">
-              Hospital Portal
+              {tr('Hospital Portal')}
             </button>
             <button onClick={onGetStarted} className="hover:text-slate-900 dark:hover:text-white transition-colors">
-              Donor Registration
+              {tr('Donor Registration')}
             </button>
           </div>
-          <p>© {new Date().getFullYear()} BloodFlow. Voluntary healthcare initiative.</p>
+          <p>© {new Date().getFullYear()} BloodFlow. {tr('Voluntary healthcare initiative.')}</p>
         </div>
       </footer>
     </div>

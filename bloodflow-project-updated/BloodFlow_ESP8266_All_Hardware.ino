@@ -1,36 +1,41 @@
 /*
  * ===================================================================
- *  BloodFlow Smart IoT — ESP8266 + LCD 16x2 I2C + DS18B20 + RC522
+ *  BloodFlow Smart IoT — ESP8266 + LCD 16x2 I2C + RC522 + Button
+ *  (DS18B20 Temperature Sensor Disabled / Optional)
  *
- *  WIRING (Updated — all hardware):
+ *  CURRENT WIRING:
  *  ---------------------------------
- *  Emergency Button Leg1 → D0 (GPIO 16)
- *  Emergency Button Leg2 → GND
- *  10kΩ resistor         → between D0 and 3.3V  (pull-up, required!)
+ *  1. RC522 RFID READER:
+ *     RC522 VCC             → 3V3   (⚠️ 3.3V ONLY — NEVER 5V!)
+ *     RC522 GND             → GND
+ *     RC522 RST             → D3 (GPIO 0)
+ *     RC522 SDA (SS)        → D4 (GPIO 2)
+ *     RC522 SCK             → D5 (GPIO 14)
+ *     RC522 MISO            → D6 (GPIO 12)
+ *     RC522 MOSI            → D7 (GPIO 13)
  *
- *  DS18B20 VCC (Red)     → 3V3
- *  DS18B20 GND (Black)   → GND
- *  DS18B20 DATA          → D8 (GPIO 15)  [+ 4.7kΩ between D8 and 3V3]
+ *  2. LCD 16x2 I2C DISPLAY:
+ *     LCD VCC               → VIN / 5V
+ *     LCD GND               → GND
+ *     LCD SDA               → D2 (GPIO 4)
+ *     LCD SCL               → D1 (GPIO 5)
  *
- *  LCD 16x2 I2C SDA      → D2 (GPIO 4)
- *  LCD 16x2 I2C SCL      → D1 (GPIO 5)
- *  LCD VCC               → VIN / 5V
- *  LCD GND               → GND
+ *  3. EMERGENCY FIRE PUSH BUTTON:
+ *     Button Leg 1          → D0 (GPIO 16)
+ *     Button Leg 2          → GND
+ *     10kΩ Pull-Up Resistor → between D0 and 3.3V (required!)
  *
- *  RC522 VCC             → 3V3   (NEVER 5V!)
- *  RC522 GND             → GND
- *  RC522 RST             → D3 (GPIO 0)
- *  RC522 SDA             → D4 (GPIO 2)
- *  RC522 SCK             → D5 (GPIO 14)
- *  RC522 MISO            → D6 (GPIO 12)
- *  RC522 MOSI            → D7 (GPIO 13)
+ *  4. TEMPERATURE SENSOR (DS18B20) - OMITTED / DISABLED FOR NOW:
+ *     Set #define ENABLE_TEMPERATURE true when connecting:
+ *     DS18B20 VCC           → 3V3
+ *     DS18B20 GND           → GND
+ *     DS18B20 DATA          → D8 (GPIO 15) [+ 4.7kΩ pull-up to 3V3]
  *
- *  LIBRARIES — install from Library Manager:
+ *  LIBRARIES — install from Arduino Library Manager:
  *    LiquidCrystal_I2C   (Frank de Brabander)
- *    OneWire             (Paul Stoffregen)
- *    DallasTemperature   (Miles Burton)
  *    MFRC522             (GithubCommunity)
  *    ArduinoJson         (Benoit Blanchon) v6 or v7
+ *    (Optional) OneWire & DallasTemperature (only if temp enabled)
  * ===================================================================
  */
 
@@ -56,6 +61,9 @@ const char* SUPABASE_ANON_KEY = "sb_publishable_uPsHJqLyu5jZwpoK0GvoPw_TQUtty3D"
 
 const char* STORAGE_CODE = "ST001";
 const char* DEVICE_ID    = "BLOOD-BANK-ESP8266";
+
+// Temperature sensor feature flag: set to true when DS18B20 is plugged in, false to disable
+#define ENABLE_TEMPERATURE false
 
 // LCD I2C address — try 0x27 first, if blank try 0x3F
 #define LCD_ADDRESS 0x27
@@ -133,10 +141,14 @@ void setup() {
 
   lcdShow("BloodFlow IoT", "Starting up...");
 
+#if ENABLE_TEMPERATURE
   // DS18B20 on D8
   tempSensor.begin();
   int ds = tempSensor.getDeviceCount();
   Serial.printf("DS18B20 found: %d sensor(s) on D8\n", ds);
+#else
+  Serial.println(F("Temperature sensor disabled (RFID & Emergency active)"));
+#endif
 
   // RC522 RFID
   SPI.begin();
@@ -217,11 +229,13 @@ void loop() {
     lcdShowReady(lastKnownTemp);
   }
 
+#if ENABLE_TEMPERATURE
   // ── DS18B20 TEMPERATURE (D8) ───────────────────────────
   if (millis() - lastTempTime > TEMP_INTERVAL_MS) {
     lastTempTime = millis();
     readAndPostTemperature();
   }
+#endif
 
   // ── RC522 RFID ─────────────────────────────────────────
   if (rfid.PICC_IsNewCardPresent() && rfid.PICC_ReadCardSerial()) {
@@ -270,9 +284,15 @@ void loop() {
   // ── HEARTBEAT ──────────────────────────────────────────
   if (millis() - lastHeartbeat > HEARTBEAT_MS) {
     lastHeartbeat = millis();
+    float t = 0.0;
+#if ENABLE_TEMPERATURE
     tempSensor.requestTemperatures();
-    float t = tempSensor.getTempCByIndex(0);
-    sendHeartbeat((t != DEVICE_DISCONNECTED_C) ? t : 0.0);
+    float reading = tempSensor.getTempCByIndex(0);
+    if (reading != DEVICE_DISCONNECTED_C && reading != -127.0f) {
+      t = reading;
+    }
+#endif
+    sendHeartbeat(t);
   }
 }
 
@@ -289,12 +309,13 @@ void lcdShow(const char* line1, const char* line2) {
   lcd.print(line2);
 }
 
-// Normal idle screen — shows temp
+// Normal idle screen — shows ready / RFID prompt
 void lcdShowReady(float tempC) {
   lcd.clear();
   lcd.setCursor(0, 0);
   lcd.print("BloodFlow  Ready");
   lcd.setCursor(0, 1);
+#if ENABLE_TEMPERATURE
   lcd.write(1);  // thermometer icon
   lcd.print(" Temp: ");
   if (tempC <= 0.0) {
@@ -303,6 +324,9 @@ void lcdShowReady(float tempC) {
     lcd.print(tempC, 1);
     lcd.print(" \xDF""C   ");  // °C
   }
+#else
+  lcd.print("Scan RFID Tag...");
+#endif
 }
 
 // 🚨 EMERGENCY ALERT — full screen flashing message
@@ -563,3 +587,4 @@ String getTagUID() {
   uid.toUpperCase();
   return uid;
 }
+   

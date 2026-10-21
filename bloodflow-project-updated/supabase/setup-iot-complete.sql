@@ -235,7 +235,47 @@ BEGIN
 END $$;
 
 -- ───────────────────────────────────────────
--- 6. SEED DEMO STORAGE UNITS
+-- 6. RFID SCAN TRIGGER (Auto-links scanned UID to blood_units inventory)
+-- ───────────────────────────────────────────
+
+CREATE OR REPLACE FUNCTION public.handle_rfid_scan_event()
+RETURNS TRIGGER AS $$
+DECLARE
+    matched_unit public.blood_units%ROWTYPE;
+BEGIN
+    -- Look for a registered blood unit matching this scanned tag
+    SELECT * INTO matched_unit 
+    FROM public.blood_units 
+    WHERE LOWER(rfid_uid) = LOWER(NEW.rfid_uid) 
+    LIMIT 1;
+
+    IF FOUND THEN
+        NEW.blood_unit_id   := matched_unit.id;
+        NEW.blood_unit_code := matched_unit.blood_unit_code;
+        NEW.blood_group     := matched_unit.blood_group;
+        NEW.result          := 'SUCCESS';
+
+        -- Update the blood unit timestamp and assigned storage unit
+        UPDATE public.blood_units 
+        SET last_scanned_at = NOW(),
+            storage_unit_id = COALESCE(NEW.storage_unit_id, storage_unit_id)
+        WHERE id = matched_unit.id;
+    ELSE
+        -- Tag scanned on hardware is not registered in blood_units yet
+        NEW.result := 'FLAGGED';
+        NEW.action := 'UNKNOWN_TAG';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS trg_handle_rfid_scan_event ON public.rfid_events;
+CREATE TRIGGER trg_handle_rfid_scan_event
+BEFORE INSERT ON public.rfid_events
+FOR EACH ROW EXECUTE FUNCTION public.handle_rfid_scan_event();
+
+-- ───────────────────────────────────────────
+-- 7. SEED DEMO STORAGE UNITS
 -- ───────────────────────────────────────────
 
 INSERT INTO public.storage_units (storage_code, name, location, status, current_temperature, min_temp_threshold, max_temp_threshold)

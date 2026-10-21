@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
-  Thermometer,
   Cpu,
   Radio,
   AlertTriangle,
@@ -22,6 +21,7 @@ import {
   PhoneCall,
   Flame,
   ShieldAlert,
+  Plus,
 } from 'lucide-react';
 import { Card, Badge, Button, Input, Select, Modal, EmptyState } from '@/components/ui';
 import {
@@ -29,7 +29,6 @@ import {
   BLOOD_GROUPS,
   type StorageUnit,
   type IoTDevice,
-  type TemperatureReading,
   type RFIDBloodUnit,
   type RFIDEvent,
   type IoTAlert,
@@ -38,8 +37,9 @@ import {
 } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/lib/auth';
+import { useLanguage } from '@/lib/i18n';
 
-type IoTSubTab = 'overview' | 'temp' | 'devices' | 'rfid' | 'inventory' | 'alerts' | 'logs';
+type IoTSubTab = 'overview' | 'devices' | 'rfid' | 'inventory' | 'alerts' | 'logs';
 
 interface SmartBloodBankIoTProps {
   hospital: Hospital | null;
@@ -47,6 +47,7 @@ interface SmartBloodBankIoTProps {
 
 export function SmartBloodBankIoT({ hospital }: SmartBloodBankIoTProps) {
   const { profile } = useAuth();
+  const { tr } = useLanguage();
   const [subTab, setSubTab] = useState<IoTSubTab>('overview');
 
   // Core IoT State (Reads from Supabase)
@@ -55,7 +56,85 @@ export function SmartBloodBankIoT({ hospital }: SmartBloodBankIoTProps) {
   const [bloodUnits, setBloodUnits] = useState<RFIDBloodUnit[]>([]);
   const [rfidEvents, setRfidEvents] = useState<RFIDEvent[]>([]);
   const [alerts, setAlerts] = useState<IoTAlert[]>([]);
-  const [tempHistory, setTempHistory] = useState<{ time: string; ST001: number; ST002: number; ST003: number }[]>([]);
+
+  // Register Blood Bag Modal State
+  const [showRegisterBagModal, setShowRegisterBagModal] = useState(false);
+  const [registerRfidUid, setRegisterRfidUid] = useState('');
+  const [registerBloodGroup, setRegisterBloodGroup] = useState('O+');
+  const [registerUnitCode, setRegisterUnitCode] = useState('');
+  const [registerStorageId, setRegisterStorageId] = useState('');
+  const [registerVolume, setRegisterVolume] = useState('350');
+  const [registerExpiryDate, setRegisterExpiryDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 35);
+    return d.toISOString().split('T')[0];
+  });
+  const [savingBag, setSavingBag] = useState(false);
+  const [bagSaveError, setBagSaveError] = useState<string | null>(null);
+
+  function openRegisterModal(prefillUid?: string) {
+    const uid = prefillUid || (rfidEvents.find(e => !bloodUnits.some(b => b.rfid_uid === e.rfid_uid))?.rfid_uid || '');
+    setRegisterRfidUid(uid);
+    setRegisterBloodGroup('O+');
+    setRegisterUnitCode(`BU-${Math.floor(1000 + Math.random() * 9000)}`);
+    setRegisterStorageId(storageUnits[0]?.id || '');
+    setRegisterVolume('350');
+    const d = new Date();
+    d.setDate(d.getDate() + 35);
+    setRegisterExpiryDate(d.toISOString().split('T')[0]);
+    setBagSaveError(null);
+    setShowRegisterBagModal(true);
+  }
+
+  async function handleSaveBloodBag() {
+    if (!registerRfidUid.trim()) {
+      setBagSaveError('RFID UID is required. Please scan or enter a tag UID.');
+      return;
+    }
+    if (!registerUnitCode.trim()) {
+      setBagSaveError('Blood Unit Code is required.');
+      return;
+    }
+
+    setSavingBag(true);
+    setBagSaveError(null);
+
+    try {
+      const { data, error } = await supabase.from('blood_units').insert({
+        blood_unit_code: registerUnitCode.trim().toUpperCase(),
+        rfid_uid: registerRfidUid.trim().toUpperCase(),
+        blood_group: registerBloodGroup,
+        storage_unit_id: registerStorageId || storageUnits[0]?.id || null,
+        hospital_id: hospital?.id || null,
+        status: 'AVAILABLE',
+        volume_ml: parseInt(registerVolume, 10) || 350,
+        expiry_date: registerExpiryDate,
+        last_scanned_at: new Date().toISOString(),
+      }).select().single();
+
+      if (error) {
+        throw error;
+      }
+
+      // Also update any previous rfid_events with this UID to link unit_code and group
+      await supabase
+        .from('rfid_events')
+        .update({
+          blood_unit_id: data.id,
+          blood_unit_code: data.blood_unit_code,
+          blood_group: data.blood_group,
+          result: 'SUCCESS',
+        })
+        .ilike('rfid_uid', registerRfidUid.trim());
+
+      setShowRegisterBagModal(false);
+      await fetchSupabaseIoTData();
+    } catch (err) {
+      setBagSaveError(err instanceof Error ? err.message : 'Failed to register blood unit');
+    } finally {
+      setSavingBag(false);
+    }
+  }
 
   // Fire & Emergency Alert IoT State
   const [latestEmergencyEvent, setLatestEmergencyEvent] = useState<EmergencyEvent | null>(null);
@@ -68,18 +147,13 @@ export function SmartBloodBankIoT({ hospital }: SmartBloodBankIoTProps) {
   });
   const [showPhoneSettingsModal, setShowPhoneSettingsModal] = useState(false);
 
-  const [selectedTimeRange, setSelectedTimeRange] = useState<'1h' | '6h' | '24h'>('1h');
   const [selectedDeviceModal, setSelectedDeviceModal] = useState<IoTDevice | null>(null);
   const [showHardwareGuideModal, setShowHardwareGuideModal] = useState(false);
+  const [hardwareGuideTab, setHardwareGuideTab] = useState<'esp8266' | 'picow' | 'raspberrypi'>('esp8266');
 
   // Filters for RFID Activity
   const [rfidFilterAction, setRfidFilterAction] = useState<string>('ALL');
   const [rfidSearchQuery, setRfidSearchQuery] = useState('');
-
-  // Threshold Configuration Modal
-  const [showConfigModal, setShowConfigModal] = useState(false);
-  const [minThreshold, setMinThreshold] = useState(2.0);
-  const [maxThreshold, setMaxThreshold] = useState(6.0);
 
   // Fetch real data from Supabase
   const fetchSupabaseIoTData = useCallback(async () => {
@@ -226,9 +300,6 @@ export function SmartBloodBankIoT({ hospital }: SmartBloodBankIoTProps) {
   // Summary Metrics calculations
   const onlineUnitsCount = storageUnits.filter((u) => u.status !== 'offline').length;
   const offlineUnitsCount = storageUnits.filter((u) => u.status === 'offline').length;
-  const normalTempCount = storageUnits.filter((u) => u.status === 'normal').length;
-  const warningTempCount = storageUnits.filter((u) => u.status === 'warning').length;
-  const criticalTempCount = storageUnits.filter((u) => u.status === 'critical').length;
   const availableBloodUnitsCount = bloodUnits.filter((b) => b.status === 'AVAILABLE').length;
 
   const unitsEnteredToday = rfidEvents.filter(
@@ -261,20 +332,15 @@ export function SmartBloodBankIoT({ hospital }: SmartBloodBankIoTProps) {
           <div className="flex items-center gap-2">
             <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">Smart Blood Bank IoT</h2>
             <Badge variant="red" dot>
-              ESP32 (DS18B20 + RC522)
+              NodeMCU ESP8266 (RC522 + Alert)
             </Badge>
           </div>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Real-time cold storage temperature monitoring &amp; RFID blood unit tracking.
+            Real-time RFID blood unit tracking &amp; emergency alert system.
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {/* Threshold Config Button */}
-          <Button size="xs" variant="outline" onClick={() => setShowConfigModal(true)}>
-            <Sliders className="h-3.5 w-3.5 mr-1" /> Prototype Thresholds
-          </Button>
-
           {/* Hardware Guide Button */}
           <Button size="xs" variant="primary" onClick={() => setShowHardwareGuideModal(true)}>
             <Code2 className="h-3.5 w-3.5 mr-1" /> Hardware Setup Guide
@@ -286,7 +352,6 @@ export function SmartBloodBankIoT({ hospital }: SmartBloodBankIoTProps) {
       <div className="flex items-center gap-1.5 border-b border-slate-200 overflow-x-auto pb-1">
         {[
           { id: 'overview', label: 'Overview', icon: <Layers className="h-4 w-4" /> },
-          { id: 'temp', label: 'Storage Temperature', icon: <Thermometer className="h-4 w-4" /> },
           { id: 'devices', label: 'IoT Devices', icon: <Radio className="h-4 w-4" /> },
           { id: 'rfid', label: 'RFID Units', icon: <Cpu className="h-4 w-4" /> },
           { id: 'logs', label: 'Scan Logs', icon: <Activity className="h-4 w-4" /> },
@@ -477,22 +542,26 @@ export function SmartBloodBankIoT({ hospital }: SmartBloodBankIoTProps) {
               </div>
             </Card>
 
-            {/* Temperature Status */}
-            <Card className="p-5 border-l-4 border-l-emerald-500">
+            {/* IoT Device Status */}
+            <Card className="p-5 border-l-4 border-l-blue-500">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Temperature Status</span>
-                <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600">
-                  <Thermometer className="h-5 w-5" />
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">IoT Controllers</span>
+                <div className="p-2 rounded-xl bg-blue-50 text-blue-600">
+                  <Radio className="h-5 w-5" />
                 </div>
               </div>
               <div className="mt-2 flex items-baseline gap-2">
-                <span className="text-3xl font-black text-emerald-600">{normalTempCount}</span>
-                <span className="text-xs text-slate-500">Normal (2°C – 6°C)</span>
+                <span className="text-3xl font-black text-slate-900">{devices.length}</span>
+                <span className="text-xs text-slate-500">Active Devices</span>
               </div>
               <div className="mt-3 flex items-center gap-3 text-xs border-t border-slate-100 pt-2.5">
-                <span className="text-amber-600 font-bold">{warningTempCount} Warning</span>
+                <span className="text-emerald-600 font-bold flex items-center gap-1">
+                  <span className="h-2 w-2 rounded-full bg-emerald-500" /> {devices.filter((d) => d.status === 'online').length} Online
+                </span>
                 <span className="text-slate-400">|</span>
-                <span className="text-red-600 font-bold">{criticalTempCount} Critical</span>
+                <span className="text-slate-500 font-bold flex items-center gap-1">
+                  <span className="h-2 w-2 rounded-full bg-slate-400" /> {devices.filter((d) => d.status !== 'online').length} Offline
+                </span>
               </div>
             </Card>
 
@@ -509,7 +578,7 @@ export function SmartBloodBankIoT({ hospital }: SmartBloodBankIoTProps) {
                 <span className="text-xs text-slate-500">Available Bags</span>
               </div>
               <div className="mt-3 text-xs text-slate-500 border-t border-slate-100 pt-2.5 truncate">
-                Tracked across {storageUnits.length} Cold Storage Units
+                Tracked across {storageUnits.length} Storage Units
               </div>
             </Card>
 
@@ -538,16 +607,14 @@ export function SmartBloodBankIoT({ hospital }: SmartBloodBankIoTProps) {
             {/* Storage Units Status Column */}
             <div className="lg:col-span-2 space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-base font-bold text-slate-900">Live Storage Unit Temperatures</h3>
-                <span className="text-xs text-slate-500">Safe Range: {minThreshold}°C – {maxThreshold}°C</span>
+                <h3 className="text-base font-bold text-slate-900">Storage Units & Hardware Allocation</h3>
+                <span className="text-xs text-slate-500">{storageUnits.length} Monitored Units</span>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {storageUnits.map((unit) => {
-                  const isNormal = unit.status === 'normal';
-                  const isWarning = unit.status === 'warning';
-                  const isCritical = unit.status === 'critical';
                   const isOffline = unit.status === 'offline';
+                  const unitBags = bloodUnits.filter((b) => b.storage_unit_id === unit.id && b.status === 'AVAILABLE').length;
 
                   return (
                     <Card key={unit.id} className="p-5 hover:border-slate-300 transition-all">
@@ -560,39 +627,28 @@ export function SmartBloodBankIoT({ hospital }: SmartBloodBankIoTProps) {
                           <p className="text-[11px] text-slate-500 leading-tight mt-0.5">{unit.location}</p>
                         </div>
 
-                        {isNormal && (
-                          <Badge variant="green" dot>
-                            NORMAL
-                          </Badge>
-                        )}
-                        {isWarning && (
-                          <Badge variant="yellow" dot>
-                            WARNING
-                          </Badge>
-                        )}
-                        {isCritical && (
-                          <Badge variant="red" dot>
-                            CRITICAL
-                          </Badge>
-                        )}
-                        {isOffline && (
+                        {isOffline ? (
                           <Badge variant="gray" dot>
                             OFFLINE
+                          </Badge>
+                        ) : (
+                          <Badge variant="green" dot>
+                            ACTIVE
                           </Badge>
                         )}
                       </div>
 
                       <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3">
                         <div>
-                          <span className="text-2xl font-black text-slate-900">{unit.current_temperature}°C</span>
-                          <span className="text-[10px] text-slate-400 block">Current Temp</span>
+                          <span className="text-2xl font-black text-slate-900">{unitBags}</span>
+                          <span className="text-[10px] text-slate-400 block">Units Stored</span>
                         </div>
 
                         <div className="text-right">
                           <span className="text-xs font-bold text-slate-700 block">
-                            {isOffline ? 'Disconnected' : 'ESP32 Online'}
+                            {isOffline ? 'Disconnected' : 'NodeMCU Linked'}
                           </span>
-                          <span className="text-[10px] text-slate-400">Updated seconds ago</span>
+                          <span className="text-[10px] text-slate-400">RFID Scanner Ready</span>
                         </div>
                       </div>
                     </Card>
@@ -654,155 +710,13 @@ export function SmartBloodBankIoT({ hospital }: SmartBloodBankIoTProps) {
         </div>
       )}
 
-      {/* 2. TEMPERATURE MONITORING TAB */}
-      {subTab === 'temp' && (
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-bold text-slate-900">🌡️ Storage Temperature Monitoring</h3>
-              <p className="text-xs text-slate-500">
-                Configured Prototype Thresholds: Safe ({minThreshold}°C – {maxThreshold}°C)
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-500 font-semibold">Graph Window:</span>
-              <div className="flex items-center gap-1 rounded-xl border border-slate-200 bg-white p-1 text-xs">
-                {(['1h', '6h', '24h'] as const).map((r) => (
-                  <button
-                    key={r}
-                    onClick={() => setSelectedTimeRange(r)}
-                    className={cn(
-                      'px-2.5 py-1 rounded-lg font-bold transition-all',
-                      selectedTimeRange === r ? 'bg-red-600 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-100'
-                    )}
-                  >
-                    {r}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* SVG Temperature Graph */}
-          <Card className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-4 text-xs font-bold">
-                <span className="flex items-center gap-1.5 text-blue-600">
-                  <span className="h-3 w-3 rounded-full bg-blue-600" /> ST001 (Cold Vault A)
-                </span>
-                <span className="flex items-center gap-1.5 text-amber-600">
-                  <span className="h-3 w-3 rounded-full bg-amber-600" /> ST002 (Cold Vault B)
-                </span>
-                <span className="flex items-center gap-1.5 text-red-600">
-                  <span className="h-3 w-3 rounded-full bg-red-600" /> ST003 (Emergency C)
-                </span>
-              </div>
-
-              <span className="text-[11px] font-mono text-slate-400">Live Auto-Update</span>
-            </div>
-
-            {/* Custom SVG Line Chart */}
-            <div className="w-full overflow-x-auto">
-              <svg className="w-full h-64 min-w-[600px]" viewBox="0 0 700 240" fill="none">
-                {/* Background grid lines */}
-                <line x1="40" y1="30" x2="680" y2="30" stroke="#f1f5f9" strokeWidth="1" />
-                <line x1="40" y1="80" x2="680" y2="80" stroke="#f1f5f9" strokeWidth="1" />
-                <line x1="40" y1="130" x2="680" y2="130" stroke="#f1f5f9" strokeWidth="1" />
-                <line x1="40" y1="180" x2="680" y2="180" stroke="#f1f5f9" strokeWidth="1" />
-
-                {/* Safe Threshold Band Highlight (2.0°C to 6.0°C) */}
-                <rect x="40" y="110" width="640" height="50" fill="#ecfdf5" opacity="0.7" />
-                <line x1="40" y1="110" x2="680" y2="110" stroke="#10b981" strokeWidth="1.5" strokeDasharray="4" />
-                <line x1="40" y1="160" x2="680" y2="160" stroke="#10b981" strokeWidth="1.5" strokeDasharray="4" />
-
-                <text x="685" y="114" fill="#10b981" fontSize="10" fontWeight="bold">6°C Max</text>
-                <text x="685" y="164" fill="#10b981" fontSize="10" fontWeight="bold">2°C Min</text>
-
-                {/* Plot Lines */}
-                {/* ST001 Line */}
-                <polyline
-                  fill="none"
-                  stroke="#2563eb"
-                  strokeWidth="3"
-                  points={tempHistory
-                    .map((d, i) => `${40 + i * 50},${180 - ((d.ST001 - 1) / 14) * 150}`)
-                    .join(' ')}
-                />
-
-                {/* ST002 Line */}
-                <polyline
-                  fill="none"
-                  stroke="#d97706"
-                  strokeWidth="3"
-                  points={tempHistory
-                    .map((d, i) => `${40 + i * 50},${180 - ((d.ST002 - 1) / 14) * 150}`)
-                    .join(' ')}
-                />
-
-                {/* ST003 Line */}
-                <polyline
-                  fill="none"
-                  stroke="#dc2626"
-                  strokeWidth="3"
-                  points={tempHistory
-                    .map((d, i) => `${40 + i * 50},${180 - ((d.ST003 - 1) / 14) * 150}`)
-                    .join(' ')}
-                />
-
-                {/* Time Axis Labels */}
-                {tempHistory.map((d, i) => (
-                  <text key={i} x={40 + i * 50} y="210" fill="#64748b" fontSize="9" textAnchor="middle">
-                    {d.time}
-                  </text>
-                ))}
-              </svg>
-            </div>
-          </Card>
-
-          {/* Storage Units Cards Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {storageUnits.map((unit) => (
-              <Card key={unit.id} className="p-5">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Badge variant="red" className="font-mono">
-                      {unit.storage_code}
-                    </Badge>
-                    <h4 className="font-bold text-slate-900">{unit.name}</h4>
-                  </div>
-                  <Badge variant={unit.status === 'normal' ? 'green' : unit.status === 'warning' ? 'yellow' : 'red'}>
-                    {unit.status.toUpperCase()}
-                  </Badge>
-                </div>
-
-                <div className="mt-4 grid grid-cols-3 gap-3 border-t border-slate-100 pt-3 text-center">
-                  <div>
-                    <span className="text-xl font-black text-slate-900">{unit.current_temperature}°C</span>
-                    <span className="text-[10px] text-slate-400 block">Current Temp</span>
-                  </div>
-                  <div>
-                    <span className="text-sm font-bold text-emerald-600">{unit.min_temp_threshold}°C</span>
-                    <span className="text-[10px] text-slate-400 block">Min Threshold</span>
-                  </div>
-                  <div>
-                    <span className="text-sm font-bold text-red-600">{unit.max_temp_threshold}°C</span>
-                    <span className="text-[10px] text-slate-400 block">Max Threshold</span>
-                  </div>
-                </div>
-              </Card>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* 3. IOT DEVICES TAB */}
+      {/* 2. IOT DEVICES TAB */}
       {subTab === 'devices' && (
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-bold text-slate-900">📡 ESP32 Hardware Status</h3>
-              <p className="text-xs text-slate-500">Connected IoT Microcontrollers &amp; Sensors</p>
+              <h3 className="text-lg font-bold text-slate-900">📡 IoT Hardware Controllers</h3>
+              <p className="text-xs text-slate-500">Connected Microcontrollers &amp; Hardware Status</p>
             </div>
           </div>
 
@@ -834,8 +748,10 @@ export function SmartBloodBankIoT({ hospital }: SmartBloodBankIoTProps) {
                     <span className="font-mono text-slate-700">{dev.firmware_version}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-slate-400">Last Temp:</span>
-                    <span className="font-bold text-red-600">{dev.last_temperature}°C</span>
+                    <span className="text-slate-400">Last Seen:</span>
+                    <span className="font-semibold text-slate-800">
+                      {new Date(dev.last_seen).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
                   </div>
                 </div>
 
@@ -857,11 +773,15 @@ export function SmartBloodBankIoT({ hospital }: SmartBloodBankIoTProps) {
       {/* 4. RFID BLOOD UNITS TAB */}
       {subTab === 'rfid' && (
         <div className="space-y-6">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <h3 className="text-lg font-bold text-slate-900">🏷️ RFID Blood Unit Tracking</h3>
+              <h3 className="text-lg font-bold text-slate-900">🏷️ {tr('RFID Blood Unit Tracking')}</h3>
               <p className="text-xs text-slate-500">Tracked RFID Bags &amp; Storage Assignment</p>
             </div>
+
+            <Button size="sm" variant="primary" onClick={() => openRegisterModal()}>
+              <Plus className="h-4 w-4 mr-1.5" /> {tr('Register Blood Bag')}
+            </Button>
           </div>
 
           <Card className="overflow-hidden">
@@ -879,35 +799,43 @@ export function SmartBloodBankIoT({ hospital }: SmartBloodBankIoTProps) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {bloodUnits.map((unit) => (
-                    <tr key={unit.id} className="hover:bg-slate-50/70 transition-colors">
-                      <td className="p-3.5 font-bold text-slate-900">{unit.blood_unit_code}</td>
-                      <td className="p-3.5 font-mono text-xs text-blue-600 font-semibold">{unit.rfid_uid}</td>
-                      <td className="p-3.5">
-                        <Badge variant="red">{unit.blood_group}</Badge>
-                      </td>
-                      <td className="p-3.5 font-mono text-slate-700">
-                        {storageUnits.find((u) => u.id === unit.storage_unit_id)?.storage_code || 'ST001'}
-                      </td>
-                      <td className="p-3.5">
-                        <Badge
-                          variant={
-                            unit.status === 'AVAILABLE'
-                              ? 'green'
-                              : unit.status === 'DISPATCHED'
-                              ? 'yellow'
-                              : 'blue'
-                          }
-                        >
-                          {unit.status}
-                        </Badge>
-                      </td>
-                      <td className="p-3.5 text-slate-600">{unit.expiry_date}</td>
-                      <td className="p-3.5 text-slate-500">
-                        {new Date(unit.last_scanned_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  {bloodUnits.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="p-8 text-center text-slate-400">
+                        No blood bags registered yet. Scan an RFID tag on your hardware or click <strong>Register Blood Bag</strong> to add one.
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    bloodUnits.map((unit) => (
+                      <tr key={unit.id} className="hover:bg-slate-50/70 transition-colors">
+                        <td className="p-3.5 font-bold text-slate-900">{unit.blood_unit_code}</td>
+                        <td className="p-3.5 font-mono text-xs text-blue-600 font-semibold">{unit.rfid_uid}</td>
+                        <td className="p-3.5">
+                          <Badge variant="red">{unit.blood_group}</Badge>
+                        </td>
+                        <td className="p-3.5 font-mono text-slate-700">
+                          {storageUnits.find((u) => u.id === unit.storage_unit_id)?.storage_code || 'ST001'}
+                        </td>
+                        <td className="p-3.5">
+                          <Badge
+                            variant={
+                              unit.status === 'AVAILABLE'
+                                ? 'green'
+                                : unit.status === 'DISPATCHED'
+                                ? 'yellow'
+                                : 'blue'
+                            }
+                          >
+                            {unit.status}
+                          </Badge>
+                        </td>
+                        <td className="p-3.5 text-slate-600">{unit.expiry_date}</td>
+                        <td className="p-3.5 text-slate-500">
+                          {unit.last_scanned_at ? new Date(unit.last_scanned_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -920,8 +848,8 @@ export function SmartBloodBankIoT({ hospital }: SmartBloodBankIoTProps) {
         <div className="space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <h3 className="text-lg font-bold text-slate-900">📋 RFID Activity Logs</h3>
-              <p className="text-xs text-slate-500">Real-time scan entries &amp; dispatches</p>
+              <h3 className="text-lg font-bold text-slate-900">📋 {tr('Scan Logs')}</h3>
+              <p className="text-xs text-slate-500">Real-time scan entries &amp; hardware dispatches</p>
             </div>
 
             <div className="flex items-center gap-2">
@@ -929,7 +857,7 @@ export function SmartBloodBankIoT({ hospital }: SmartBloodBankIoTProps) {
                 value={rfidFilterAction}
                 onChange={setRfidFilterAction}
                 options={[
-                  { value: 'ALL', label: 'All Actions' },
+                  { value: 'ALL', label: tr('All Actions') },
                   { value: 'ENTERED', label: 'ENTERED' },
                   { value: 'DISPATCHED', label: 'DISPATCHED' },
                 ]}
@@ -953,27 +881,60 @@ export function SmartBloodBankIoT({ hospital }: SmartBloodBankIoTProps) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {rfidEvents
-                    .filter((evt) => rfidFilterAction === 'ALL' || evt.action === rfidFilterAction)
-                    .map((evt) => (
-                      <tr key={evt.id} className="hover:bg-slate-50">
-                        <td className="p-3.5 font-mono text-slate-500">
-                          {new Date(evt.scanned_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                        </td>
-                        <td className="p-3.5 font-mono font-bold text-blue-600">{evt.rfid_uid}</td>
-                        <td className="p-3.5 font-bold text-slate-900">{evt.blood_unit_code || '—'}</td>
-                        <td className="p-3.5">
-                          <Badge variant="red">{evt.blood_group || 'N/A'}</Badge>
-                        </td>
-                        <td className="p-3.5 font-mono text-slate-700">ST001</td>
-                        <td className="p-3.5">
-                          <Badge variant={evt.action === 'ENTERED' ? 'green' : 'yellow'}>{evt.action}</Badge>
-                        </td>
-                        <td className="p-3.5">
-                          <Badge variant={evt.result === 'SUCCESS' ? 'green' : 'red'}>{evt.result}</Badge>
-                        </td>
-                      </tr>
-                    ))}
+                  {rfidEvents.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="p-8 text-center text-slate-400">
+                        No scan activity recorded yet. Swipe an RFID card on your ESP8266 scanner to view live logs!
+                      </td>
+                    </tr>
+                  ) : (
+                    rfidEvents
+                      .filter((evt) => rfidFilterAction === 'ALL' || evt.action === rfidFilterAction)
+                      .map((evt) => {
+                        const matchedBag = bloodUnits.find((b) => b.rfid_uid.toLowerCase() === evt.rfid_uid.toLowerCase());
+                        const unitCode = evt.blood_unit_code && evt.blood_unit_code !== 'UNKNOWN' ? evt.blood_unit_code : matchedBag?.blood_unit_code;
+                        const bloodGroup = evt.blood_group && evt.blood_group !== 'N/A' ? evt.blood_group : matchedBag?.blood_group;
+
+                        return (
+                          <tr key={evt.id} className="hover:bg-slate-50">
+                            <td className="p-3.5 font-mono text-slate-500">
+                              {new Date(evt.scanned_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                            </td>
+                            <td className="p-3.5 font-mono font-bold text-blue-600">{evt.rfid_uid}</td>
+                            <td className="p-3.5 font-bold text-slate-900">
+                              {unitCode ? (
+                                <span>{unitCode}</span>
+                              ) : (
+                                <Button
+                                  size="xs"
+                                  variant="outline"
+                                  onClick={() => openRegisterModal(evt.rfid_uid)}
+                                  className="text-[10px] h-6 px-2 text-red-600 border-red-200 hover:bg-red-50 inline-flex items-center"
+                                >
+                                  <Plus className="h-3 w-3 mr-1" /> {tr('Tag as Blood Bag')}
+                                </Button>
+                              )}
+                            </td>
+                            <td className="p-3.5">
+                              {bloodGroup ? (
+                                <Badge variant="red">{bloodGroup}</Badge>
+                              ) : (
+                                <span className="text-slate-400 italic text-[11px]">Unregistered Tag</span>
+                              )}
+                            </td>
+                            <td className="p-3.5 font-mono text-slate-700">
+                              {storageUnits.find((u) => u.id === evt.storage_unit_id)?.storage_code || 'ST001'}
+                            </td>
+                            <td className="p-3.5">
+                              <Badge variant={evt.action === 'ENTERED' ? 'green' : 'yellow'}>{evt.action}</Badge>
+                            </td>
+                            <td className="p-3.5">
+                              <Badge variant={evt.result === 'SUCCESS' ? 'green' : 'red'}>{evt.result}</Badge>
+                            </td>
+                          </tr>
+                        );
+                      })
+                  )}
                 </tbody>
               </table>
             </div>
@@ -1043,131 +1004,373 @@ export function SmartBloodBankIoT({ hospital }: SmartBloodBankIoTProps) {
         </div>
       )}
 
-      {/* Modal: ESP32 Hardware Setup Guide */}
+      {/* Modal: Physical Hardware Setup Guide */}
       {showHardwareGuideModal && (
         <Modal
           open
           onClose={() => setShowHardwareGuideModal(false)}
-          title="ESP32 Physical Hardware Connection Guide"
-          maxWidth="max-w-2xl"
+          title="Hardware Setup & Wiring Guide"
+          maxWidth="max-w-3xl"
         >
           <div className="space-y-4 text-xs text-slate-700 leading-relaxed">
-            <div className="rounded-xl bg-red-50 p-3 border border-red-200">
-              <h4 className="font-bold text-red-900 text-sm">Step-by-Step Hardware Wiring:</h4>
-              <p className="text-red-700 mt-1">
-                Connect your physical <strong>ESP32 NodeMCU board</strong> to the sensors and push button as follows:
-              </p>
+            {/* Board Selector Tabs */}
+            <div className="flex border-b border-slate-200 gap-1 pb-1">
+              <button
+                type="button"
+                onClick={() => setHardwareGuideTab('esp8266')}
+                className={cn(
+                  "px-3 py-1.5 font-bold rounded-lg text-xs transition-all",
+                  hardwareGuideTab === 'esp8266'
+                    ? "bg-red-600 text-white shadow-sm"
+                    : "text-slate-600 hover:bg-slate-100"
+                )}
+              >
+                ⚡ NodeMCU ESP8266 (Primary)
+              </button>
+              <button
+                type="button"
+                onClick={() => setHardwareGuideTab('picow')}
+                className={cn(
+                  "px-3 py-1.5 font-bold rounded-lg text-xs transition-all",
+                  hardwareGuideTab === 'picow'
+                    ? "bg-red-600 text-white shadow-sm"
+                    : "text-slate-600 hover:bg-slate-100"
+                )}
+              >
+                🍓 Raspberry Pi Pico 2W
+              </button>
+              <button
+                type="button"
+                onClick={() => setHardwareGuideTab('raspberrypi')}
+                className={cn(
+                  "px-3 py-1.5 font-bold rounded-lg text-xs transition-all",
+                  hardwareGuideTab === 'raspberrypi'
+                    ? "bg-red-600 text-white shadow-sm"
+                    : "text-slate-600 hover:bg-slate-100"
+                )}
+              >
+                🖥️ Raspberry Pi 3/4/5 (Python)
+              </button>
             </div>
 
-            {/* Wiring Table */}
-            <div className="overflow-x-auto rounded-xl border border-slate-200">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-100 font-bold text-slate-700">
-                  <tr>
-                    <th className="p-2.5">Component</th>
-                    <th className="p-2.5">Sensor Pin</th>
-                    <th className="p-2.5">ESP32 Pin</th>
-                    <th className="p-2.5">Notes</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 text-slate-600">
-                  <tr>
-                    <td className="p-2.5 font-bold">Fire Push Button</td>
-                    <td className="p-2.5">Terminal 1 / 2</td>
-                    <td className="p-2.5 font-mono text-red-600 font-bold">GPIO 27 &amp; GND</td>
-                    <td className="p-2.5">INPUT_PULLUP (HIGH = Normal, LOW = Pressed)</td>
-                  </tr>
-                  <tr>
-                    <td className="p-2.5 font-bold">DS18B20 Temp Sensor</td>
-                    <td className="p-2.5">VCC, GND, DATA</td>
-                    <td className="p-2.5 font-mono text-amber-600 font-bold">GPIO 4</td>
-                    <td className="p-2.5">Requires 4.7kΩ pull-up resistor to 3.3V</td>
-                  </tr>
-                  <tr>
-                    <td className="p-2.5 font-bold">RC522 RFID Reader</td>
-                    <td className="p-2.5">SDA / SS</td>
-                    <td className="p-2.5 font-mono text-blue-600 font-bold">GPIO 5</td>
-                    <td className="p-2.5">SPI Chip Select</td>
-                  </tr>
-                  <tr>
-                    <td className="p-2.5 font-bold">RC522 RFID Reader</td>
-                    <td className="p-2.5">SCK / MOSI / MISO</td>
-                    <td className="p-2.5 font-mono text-blue-600 font-bold">GPIO 18 / 23 / 19</td>
-                    <td className="p-2.5">Standard ESP32 Hardware SPI</td>
-                  </tr>
-                  <tr>
-                    <td className="p-2.5 font-bold">RC522 RFID Reader</td>
-                    <td className="p-2.5">RST</td>
-                    <td className="p-2.5 font-mono text-blue-600 font-bold">GPIO 22</td>
-                    <td className="p-2.5">Reset Pin</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+            {/* TAB 1: RASPBERRY PI PICO 2W */}
+            {hardwareGuideTab === 'picow' && (
+              <div className="space-y-3">
+                <div className="rounded-xl bg-red-50 p-3 border border-red-200">
+                  <h4 className="font-bold text-red-900 text-sm">🍓 Raspberry Pi Pico 2W (Arduino C++)</h4>
+                  <p className="text-red-700 mt-1">
+                    Uses file <code className="font-mono bg-red-100 px-1 py-0.5 rounded text-red-900 font-bold">BloodFlow_PicoW2_All_Hardware.ino</code>. Fast dual-core RP2350 microcontroller with built-in Wi-Fi and native internal pull-ups!
+                  </p>
+                </div>
 
-            {/* Arduino Sketch Snippet */}
-            <div>
-              <h4 className="font-bold text-slate-900 mb-1.5">ESP32 C++ Sketch (Arduino IDE - GPIO 27 Emergency Button):</h4>
-              <div className="rounded-xl border border-slate-800 bg-slate-950 p-3.5 text-slate-200 font-mono text-[11px] overflow-x-auto">
-                <pre>{`#include <WiFi.h>
-#include <HTTPClient.h>
-
-const char* ssid = "YOUR_WIFI_SSID";
-const char* password = "YOUR_WIFI_PASSWORD";
-const char* emergencyUrl = "https://gvwdrbrepbpmhjckdcyq.supabase.co/functions/v1/emergency-call";
-
-const int EMERGENCY_BUTTON_PIN = 27; // GPIO 27 Push Button
-unsigned long lastDebounceTime = 0;
-const unsigned long debounceDelay = 200; // ms
-
-void setup() {
-  Serial.begin(115200);
-  pinMode(EMERGENCY_BUTTON_PIN, INPUT_PULLUP);
-  
-  WiFi.begin(ssid, password);
-  Serial.println("BloodFlow Emergency IoT");
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
-  }
-  Serial.println("\\nWiFi Connected");
-  Serial.println("Monitoring emergency button on GPIO 27...");
-}
-
-void loop() {
-  int buttonState = digitalRead(EMERGENCY_BUTTON_PIN);
-  
-  // Button pressed = LOW (because of INPUT_PULLUP)
-  if (buttonState == LOW && (millis() - lastDebounceTime) > debounceDelay) {
-    lastDebounceTime = millis();
-    Serial.println("\\n!!! EMERGENCY BUTTON PRESSED !!!");
-    Serial.println("Emergency Type: FIRE");
-    Serial.println("Sending emergency request...");
-    
-    if (WiFi.status() == WL_CONNECTED) {
-      HTTPClient http;
-      http.begin(emergencyUrl);
-      http.addHeader("Content-Type", "application/json");
-      
-      String jsonPayload = "{\"testTwilio\":true,\"mode\":\"call\",\"device_id\":\"BLOOD-BANK-01\",\"source\":\"hardware_button\",\"emergency_type\":\"FIRE\",\"message\":\"Fire emergency button activated at Blood Bank Unit 01\"}";
-      int httpResponseCode = http.POST(jsonPayload);
-      
-      if (httpResponseCode > 0) {
-        Serial.printf("Emergency request sent. Status Code: %d\\n", httpResponseCode);
-      } else {
-        Serial.printf("Emergency request failed. Error: %s\\n", http.errorToString(httpResponseCode).c_str());
-      }
-      http.end();
-    }
-    delay(5000); // 5-second hardware cooldown
-  }
-}`}</pre>
+                <div className="overflow-x-auto rounded-xl border border-slate-200">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-100 font-bold text-slate-700">
+                      <tr>
+                        <th className="p-2">Module</th>
+                        <th className="p-2">Module Pin</th>
+                        <th className="p-2">Pico 2W GPIO</th>
+                        <th className="p-2">Pico Pin #</th>
+                        <th className="p-2">Notes</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-slate-600">
+                      <tr>
+                        <td className="p-2 font-bold" rowSpan={7}>RC522 RFID (SPI1)</td>
+                        <td className="p-2">VCC</td>
+                        <td className="p-2 font-mono text-red-600 font-bold">3V3 (OUT)</td>
+                        <td className="p-2 font-mono">Pin 36</td>
+                        <td className="p-2 text-red-600 font-bold">⚠️ 3.3V ONLY — NEVER 5V!</td>
+                      </tr>
+                      <tr>
+                        <td className="p-2">GND</td>
+                        <td className="p-2 font-mono">GND</td>
+                        <td className="p-2 font-mono">Pin 38</td>
+                        <td className="p-2">Ground</td>
+                      </tr>
+                      <tr>
+                        <td className="p-2">RST</td>
+                        <td className="p-2 font-mono text-blue-600 font-bold">GPIO 14</td>
+                        <td className="p-2 font-mono">Pin 19</td>
+                        <td className="p-2">Reset</td>
+                      </tr>
+                      <tr>
+                        <td className="p-2">SDA (SS)</td>
+                        <td className="p-2 font-mono text-blue-600 font-bold">GPIO 13</td>
+                        <td className="p-2 font-mono">Pin 17</td>
+                        <td className="p-2">SPI1 Chip Select</td>
+                      </tr>
+                      <tr>
+                        <td className="p-2">SCK</td>
+                        <td className="p-2 font-mono text-blue-600 font-bold">GPIO 10</td>
+                        <td className="p-2 font-mono">Pin 14</td>
+                        <td className="p-2">SPI1 Clock</td>
+                      </tr>
+                      <tr>
+                        <td className="p-2">MISO</td>
+                        <td className="p-2 font-mono text-blue-600 font-bold">GPIO 12</td>
+                        <td className="p-2 font-mono">Pin 16</td>
+                        <td className="p-2">SPI1 Master In</td>
+                      </tr>
+                      <tr>
+                        <td className="p-2">MOSI</td>
+                        <td className="p-2 font-mono text-blue-600 font-bold">GPIO 11</td>
+                        <td className="p-2 font-mono">Pin 15</td>
+                        <td className="p-2">SPI1 Master Out</td>
+                      </tr>
+                      <tr>
+                        <td className="p-2 font-bold" rowSpan={4}>LCD 16x2 I2C Display</td>
+                        <td className="p-2">VCC</td>
+                        <td className="p-2 font-mono text-red-600 font-bold">VBUS (5V)</td>
+                        <td className="p-2 font-mono">Pin 40</td>
+                        <td className="p-2">Power from USB 5V rail</td>
+                      </tr>
+                      <tr>
+                        <td className="p-2">GND</td>
+                        <td className="p-2 font-mono">GND</td>
+                        <td className="p-2 font-mono">Pin 38</td>
+                        <td className="p-2">Ground</td>
+                      </tr>
+                      <tr>
+                        <td className="p-2">SDA</td>
+                        <td className="p-2 font-mono text-emerald-600 font-bold">GPIO 4</td>
+                        <td className="p-2 font-mono">Pin 6</td>
+                        <td className="p-2">I2C0 SDA</td>
+                      </tr>
+                      <tr>
+                        <td className="p-2">SCL</td>
+                        <td className="p-2 font-mono text-emerald-600 font-bold">GPIO 5</td>
+                        <td className="p-2 font-mono">Pin 7</td>
+                        <td className="p-2">I2C0 SCL</td>
+                      </tr>
+                      <tr>
+                        <td className="p-2 font-bold" rowSpan={2}>Emergency Push Button</td>
+                        <td className="p-2">Terminal 1</td>
+                        <td className="p-2 font-mono text-red-600 font-bold">GPIO 15</td>
+                        <td className="p-2 font-mono">Pin 20</td>
+                        <td className="p-2">Internal INPUT_PULLUP (no resistor needed!)</td>
+                      </tr>
+                      <tr>
+                        <td className="p-2">Terminal 2</td>
+                        <td className="p-2 font-mono">GND</td>
+                        <td className="p-2 font-mono">Pin 38</td>
+                        <td className="p-2">Pressing pulls pin to LOW</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </div>
+            )}
 
-            <p className="text-slate-500 text-[11px]">
-              Once powered on, pressing the physical GPIO 27 button will immediately log an emergency event in Supabase and trigger an automated Twilio emergency voice call!
-            </p>
+            {/* TAB 2: STANDARD RASPBERRY PI */}
+            {hardwareGuideTab === 'raspberrypi' && (
+              <div className="space-y-3">
+                <div className="rounded-xl bg-purple-50 p-3 border border-purple-200">
+                  <h4 className="font-bold text-purple-900 text-sm">🖥️ Raspberry Pi 3 / 4 / 5 / Zero 2W (Python)</h4>
+                  <p className="text-purple-700 mt-1">
+                    Uses script <code className="font-mono bg-purple-100 px-1 py-0.5 rounded text-purple-900 font-bold">bloodflow_raspberry_pi.py</code> with <code className="font-mono text-xs">mfrc522</code> and <code className="font-mono text-xs">RPLCD</code>. Runs directly on Raspberry Pi OS!
+                  </p>
+                </div>
+
+                <div className="overflow-x-auto rounded-xl border border-slate-200">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-100 font-bold text-slate-700">
+                      <tr>
+                        <th className="p-2">Module</th>
+                        <th className="p-2">Module Pin</th>
+                        <th className="p-2">Pi 40-Pin Header</th>
+                        <th className="p-2">BCM GPIO</th>
+                        <th className="p-2">Function</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-slate-600">
+                      <tr>
+                        <td className="p-2 font-bold" rowSpan={7}>RC522 RFID (SPI0)</td>
+                        <td className="p-2">VCC</td>
+                        <td className="p-2 font-mono text-red-600 font-bold">Pin 1</td>
+                        <td className="p-2 font-mono">3.3V</td>
+                        <td className="p-2 text-red-600 font-bold">⚠️ 3.3V ONLY — NEVER 5V!</td>
+                      </tr>
+                      <tr>
+                        <td className="p-2">GND</td>
+                        <td className="p-2 font-mono">Pin 6</td>
+                        <td className="p-2 font-mono">GND</td>
+                        <td className="p-2">Ground</td>
+                      </tr>
+                      <tr>
+                        <td className="p-2">RST</td>
+                        <td className="p-2 font-mono text-blue-600 font-bold">Pin 22</td>
+                        <td className="p-2 font-mono">GPIO 25</td>
+                        <td className="p-2">Reset</td>
+                      </tr>
+                      <tr>
+                        <td className="p-2">SDA (SS)</td>
+                        <td className="p-2 font-mono text-blue-600 font-bold">Pin 24</td>
+                        <td className="p-2 font-mono">GPIO 8</td>
+                        <td className="p-2">SPI CE0</td>
+                      </tr>
+                      <tr>
+                        <td className="p-2">SCK</td>
+                        <td className="p-2 font-mono text-blue-600 font-bold">Pin 23</td>
+                        <td className="p-2 font-mono">GPIO 11</td>
+                        <td className="p-2">SPI SCLK</td>
+                      </tr>
+                      <tr>
+                        <td className="p-2">MISO</td>
+                        <td className="p-2 font-mono text-blue-600 font-bold">Pin 21</td>
+                        <td className="p-2 font-mono">GPIO 9</td>
+                        <td className="p-2">SPI MISO</td>
+                      </tr>
+                      <tr>
+                        <td className="p-2">MOSI</td>
+                        <td className="p-2 font-mono text-blue-600 font-bold">Pin 19</td>
+                        <td className="p-2 font-mono">GPIO 10</td>
+                        <td className="p-2">SPI MOSI</td>
+                      </tr>
+                      <tr>
+                        <td className="p-2 font-bold" rowSpan={4}>LCD 16x2 I2C Display</td>
+                        <td className="p-2">VCC</td>
+                        <td className="p-2 font-mono text-red-600 font-bold">Pin 2</td>
+                        <td className="p-2 font-mono">5V</td>
+                        <td className="p-2">5V Power</td>
+                      </tr>
+                      <tr>
+                        <td className="p-2">GND</td>
+                        <td className="p-2 font-mono">Pin 9</td>
+                        <td className="p-2 font-mono">GND</td>
+                        <td className="p-2">Ground</td>
+                      </tr>
+                      <tr>
+                        <td className="p-2">SDA</td>
+                        <td className="p-2 font-mono text-emerald-600 font-bold">Pin 3</td>
+                        <td className="p-2 font-mono">GPIO 2 (SDA)</td>
+                        <td className="p-2">I2C Data Bus</td>
+                      </tr>
+                      <tr>
+                        <td className="p-2">SCL</td>
+                        <td className="p-2 font-mono text-emerald-600 font-bold">Pin 5</td>
+                        <td className="p-2 font-mono">GPIO 3 (SCL)</td>
+                        <td className="p-2">I2C Clock Bus</td>
+                      </tr>
+                      <tr>
+                        <td className="p-2 font-bold" rowSpan={2}>Emergency Push Button</td>
+                        <td className="p-2">Terminal 1</td>
+                        <td className="p-2 font-mono text-red-600 font-bold">Pin 11</td>
+                        <td className="p-2 font-mono">GPIO 17</td>
+                        <td className="p-2">Internal pull-up enabled</td>
+                      </tr>
+                      <tr>
+                        <td className="p-2">Terminal 2</td>
+                        <td className="p-2 font-mono">Pin 14</td>
+                        <td className="p-2 font-mono">GND</td>
+                        <td className="p-2">Ground</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="bg-slate-900 text-slate-100 p-3 rounded-xl font-mono text-[11px] space-y-1">
+                  <div className="text-slate-400"># Run on Raspberry Pi terminal:</div>
+                  <div>sudo raspi-config <span className="text-slate-400"># Enable SPI &amp; I2C in Interface Options</span></div>
+                  <div>pip3 install spidev mfrc522 RPLCD requests RPi.GPIO</div>
+                  <div>python3 bloodflow_raspberry_pi.py</div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 3: ESP8266 */}
+            {hardwareGuideTab === 'esp8266' && (
+              <div className="space-y-3">
+                <div className="rounded-xl bg-blue-50 p-3 border border-blue-200">
+                  <h4 className="font-bold text-blue-900 text-sm">⚡ NodeMCU ESP8266 Pinout</h4>
+                  <p className="text-blue-700 mt-1">
+                    Uses file <code className="font-mono bg-blue-100 px-1 py-0.5 rounded text-blue-900 font-bold">BloodFlow_ESP8266_All_Hardware.ino</code>.
+                  </p>
+                </div>
+                <div className="overflow-x-auto rounded-xl border border-slate-200">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-100 font-bold text-slate-700">
+                      <tr>
+                        <th className="p-2">Module</th>
+                        <th className="p-2">Module Pin</th>
+                        <th className="p-2">ESP8266 Pin</th>
+                        <th className="p-2">Notes</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-slate-600">
+                      <tr>
+                        <td className="p-2 font-bold" rowSpan={7}>RC522 RFID Reader</td>
+                        <td className="p-2">VCC</td>
+                        <td className="p-2 font-mono text-red-600 font-bold">3V3</td>
+                        <td className="p-2 text-red-600 font-medium">⚠️ 3.3V ONLY (Never connect to 5V!)</td>
+                      </tr>
+                      <tr>
+                        <td className="p-2">GND</td>
+                        <td className="p-2 font-mono">GND</td>
+                        <td className="p-2">Common Ground</td>
+                      </tr>
+                      <tr>
+                        <td className="p-2">RST</td>
+                        <td className="p-2 font-mono text-blue-600 font-bold">D3 (GPIO 0)</td>
+                        <td className="p-2">Reset Pin</td>
+                      </tr>
+                      <tr>
+                        <td className="p-2">SDA (SS)</td>
+                        <td className="p-2 font-mono text-blue-600 font-bold">D4 (GPIO 2)</td>
+                        <td className="p-2">SPI Chip Select / Slave Select</td>
+                      </tr>
+                      <tr>
+                        <td className="p-2">SCK</td>
+                        <td className="p-2 font-mono text-blue-600 font-bold">D5 (GPIO 14)</td>
+                        <td className="p-2">SPI Clock</td>
+                      </tr>
+                      <tr>
+                        <td className="p-2">MISO</td>
+                        <td className="p-2 font-mono text-blue-600 font-bold">D6 (GPIO 12)</td>
+                        <td className="p-2">SPI Master In Slave Out</td>
+                      </tr>
+                      <tr>
+                        <td className="p-2">MOSI</td>
+                        <td className="p-2 font-mono text-blue-600 font-bold">D7 (GPIO 13)</td>
+                        <td className="p-2">SPI Master Out Slave In</td>
+                      </tr>
+                      <tr>
+                        <td className="p-2 font-bold" rowSpan={4}>LCD 16x2 I2C Display</td>
+                        <td className="p-2">VCC</td>
+                        <td className="p-2 font-mono text-red-600 font-bold">VIN / 5V</td>
+                        <td className="p-2">I2C Backpack requires 5V</td>
+                      </tr>
+                      <tr>
+                        <td className="p-2">GND</td>
+                        <td className="p-2 font-mono">GND</td>
+                        <td className="p-2">Common Ground</td>
+                      </tr>
+                      <tr>
+                        <td className="p-2">SDA</td>
+                        <td className="p-2 font-mono text-emerald-600 font-bold">D2 (GPIO 4)</td>
+                        <td className="p-2">I2C Data Bus</td>
+                      </tr>
+                      <tr>
+                        <td className="p-2">SCL</td>
+                        <td className="p-2 font-mono text-emerald-600 font-bold">D1 (GPIO 5)</td>
+                        <td className="p-2">I2C Clock Bus</td>
+                      </tr>
+                      <tr>
+                        <td className="p-2 font-bold" rowSpan={2}>Emergency Push Button</td>
+                        <td className="p-2">Terminal 1</td>
+                        <td className="p-2 font-mono text-red-600 font-bold">D0 (GPIO 16)</td>
+                        <td className="p-2">Connect 10kΩ pull-up resistor to 3.3V</td>
+                      </tr>
+                      <tr>
+                        <td className="p-2">Terminal 2</td>
+                        <td className="p-2 font-mono">GND</td>
+                        <td className="p-2">Pressing pulls pin to LOW</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
         </Modal>
       )}
@@ -1260,37 +1463,85 @@ void loop() {
         </Modal>
       )}
 
-      {/* Modal: Prototype Threshold Configuration */}
-      {showConfigModal && (
+      {/* Modal: Register Blood Bag to RFID Tag */}
+      {showRegisterBagModal && (
         <Modal
           open
-          onClose={() => setShowConfigModal(false)}
-          title="Configure Prototype Temperature Thresholds"
+          onClose={() => setShowRegisterBagModal(false)}
+          title="🏷️ Register Blood Bag to RFID Tag"
         >
           <div className="space-y-4 text-xs">
-            <p className="text-slate-500">
-              Note: Thresholds set here are labeled as prototype/demo limits and do not replace clinical regulatory validation.
+            <p className="text-slate-600">
+              Assign this scanned RFID card or sticker to a physical blood unit in your hospital bank. Once saved, it tracks live in stock breakdown and storage capacity!
             </p>
-            <div className="grid grid-cols-2 gap-3">
+
+            {bagSaveError && (
+              <div className="p-3 bg-red-50 text-red-700 rounded-xl text-xs border border-red-200">
+                {bagSaveError}
+              </div>
+            )}
+
+            <div className="space-y-3">
               <Input
-                label="Min Temp (°C)"
-                type="number"
-                value={String(minThreshold)}
-                onChange={(v) => setMinThreshold(Number(v))}
+                label="RFID Tag UID (Physical Card)"
+                placeholder="e.g. 93:6A:B2:1A or E4:A2:3B:1F"
+                value={registerRfidUid}
+                onChange={(v) => setRegisterRfidUid(v)}
+                helperText="Physical tag identifier read by the RC522 reader."
               />
+
+              <div className="grid grid-cols-2 gap-3">
+                <Select
+                  label="Blood Group"
+                  value={registerBloodGroup}
+                  onChange={(v) => setRegisterBloodGroup(v)}
+                  options={BLOOD_GROUPS.map((g) => ({ value: g, label: g }))}
+                />
+
+                <Input
+                  label="Blood Unit Code"
+                  placeholder="e.g. BU-1048"
+                  value={registerUnitCode}
+                  onChange={(v) => setRegisterUnitCode(v)}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <Select
+                  label="Storage Unit Location"
+                  value={registerStorageId}
+                  onChange={(v) => setRegisterStorageId(v)}
+                  options={storageUnits.map((u) => ({ value: u.id, label: `${u.storage_code} - ${u.name}` }))}
+                />
+
+                <Input
+                  label="Volume (ml)"
+                  type="number"
+                  value={registerVolume}
+                  onChange={(v) => setRegisterVolume(v)}
+                />
+              </div>
+
               <Input
-                label="Max Temp (°C)"
-                type="number"
-                value={String(maxThreshold)}
-                onChange={(v) => setMaxThreshold(Number(v))}
+                label="Expiry Date"
+                type="date"
+                value={registerExpiryDate}
+                onChange={(v) => setRegisterExpiryDate(v)}
               />
             </div>
-            <Button fullWidth onClick={() => setShowConfigModal(false)}>
-              Save Prototype Thresholds
-            </Button>
+
+            <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+              <Button variant="outline" onClick={() => setShowRegisterBagModal(false)} disabled={savingBag}>
+                Cancel
+              </Button>
+              <Button variant="primary" onClick={handleSaveBloodBag} loading={savingBag}>
+                Save Blood Bag &amp; Link Tag
+              </Button>
+            </div>
           </div>
         </Modal>
       )}
+
     </div>
   );
 }
