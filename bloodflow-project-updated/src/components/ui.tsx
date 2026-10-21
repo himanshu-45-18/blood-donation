@@ -15,6 +15,7 @@ type ButtonProps = {
   disabled?: boolean;
   fullWidth?: boolean;
   loading?: boolean;
+  title?: string;
 };
 
 const variantClasses: Record<ButtonVariant, string> = {
@@ -51,12 +52,14 @@ export function Button({
   disabled,
   fullWidth,
   loading = false,
+  title,
 }: ButtonProps) {
   return (
     <button
       type={type}
       onClick={onClick}
       disabled={disabled || loading}
+      title={title}
       className={cn(
         'inline-flex items-center justify-center transition-all duration-150 select-none',
         'focus:outline-none focus:ring-2 focus:ring-offset-2',
@@ -86,6 +89,7 @@ type InputProps = {
   icon?: ReactNode;
   error?: string;
   helper?: string;
+  helperText?: string;
   autoComplete?: string;
 };
 
@@ -102,8 +106,10 @@ export function Input({
   icon,
   error,
   helper,
+  helperText,
   autoComplete,
 }: InputProps) {
+  const displayHelper = helperText || helper;
   return (
     <div className={cn('w-full', className)}>
       {label && (
@@ -144,7 +150,7 @@ export function Input({
           {error}
         </p>
       )}
-      {!error && helper && <p className="mt-1 text-xs text-slate-500">{helper}</p>}
+      {!error && displayHelper && <p className="mt-1 text-xs text-slate-500">{displayHelper}</p>}
     </div>
   );
 }

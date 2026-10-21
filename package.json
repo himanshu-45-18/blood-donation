@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "description": "BloodFlow Healthcare Platform - Root Launcher",
+  "workspaces": [
+    "bloodflow-project-updated"
+  ],
   "scripts": {
     "dev": "npm --prefix bloodflow-project-updated run dev",
     "build": "npm --prefix bloodflow-project-updated run build",

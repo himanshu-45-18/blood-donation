@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://gvwdrbrepbpmhjckdcyq.supabase.co';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_uPsHJqLyu5jZwpoK0GvoPw_TQUtty3D';
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
@@ -28,6 +28,8 @@ export type Profile = {
   total_units_donated: number;
   reward_points: number;
   donor_level: string;
+  last_donation_date?: string | null;
+  gender?: string | null;
 };
 
 export type Hospital = {
@@ -112,6 +114,7 @@ export type DonorReward = {
 export type EmergencyRequest = {
   id: string;
   requesting_hospital_id: string;
+  hospital_id?: string;
   blood_group: string;
   units_needed: number;
   urgency: 'critical' | 'urgent' | 'moderate';

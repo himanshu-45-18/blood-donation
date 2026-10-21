@@ -95,7 +95,7 @@ export function DonorEligibilityCalculator({ profile, onUpdate }: DonorEligibili
             </p>
           </div>
         </div>
-        <Badge variant={isEligible ? 'green' : 'amber'} dot>
+        <Badge variant={isEligible ? 'green' : 'yellow'} dot>
           {isEligible ? 'Eligible Today' : 'Recovery Active'}
         </Badge>
       </div>
