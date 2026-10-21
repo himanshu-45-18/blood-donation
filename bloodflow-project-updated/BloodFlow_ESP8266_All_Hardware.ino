@@ -39,16 +39,22 @@
  * ===================================================================
  */
 
+// Temperature sensor feature flag: set to true when DS18B20 is plugged in, false to disable
+#define ENABLE_TEMPERATURE false
+
 #include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
 #include <WiFiClientSecure.h>
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
-#include <OneWire.h>
-#include <DallasTemperature.h>
 #include <SPI.h>
 #include <MFRC522.h>
 #include <ArduinoJson.h>
+
+#if ENABLE_TEMPERATURE
+  #include <OneWire.h>
+  #include <DallasTemperature.h>
+#endif
 
 // =========================================================
 //  ⚙️  CONFIGURATION — CHANGE THESE
@@ -61,9 +67,6 @@ const char* SUPABASE_ANON_KEY = "sb_publishable_uPsHJqLyu5jZwpoK0GvoPw_TQUtty3D"
 
 const char* STORAGE_CODE = "ST001";
 const char* DEVICE_ID    = "BLOOD-BANK-ESP8266";
-
-// Temperature sensor feature flag: set to true when DS18B20 is plugged in, false to disable
-#define ENABLE_TEMPERATURE false
 
 // LCD I2C address — try 0x27 first, if blank try 0x3F
 #define LCD_ADDRESS 0x27
@@ -92,8 +95,10 @@ const unsigned long RFID_DISPLAY_MS  = 3000;    // show RFID scan on LCD for 3 s
 //  OBJECTS
 // =========================================================
 LiquidCrystal_I2C lcd(LCD_ADDRESS, LCD_COLS, LCD_ROWS);
+#if ENABLE_TEMPERATURE
 OneWire           oneWire(ONE_WIRE_BUS);
 DallasTemperature tempSensor(&oneWire);
+#endif
 MFRC522           rfid(RFID_SDA_PIN, RFID_RST_PIN);
 WiFiClientSecure  wifiClient;
 
@@ -367,6 +372,7 @@ void lcdShowRFID(const String& uid) {
 // =========================================================
 //  DS18B20 — Read temp, post to Supabase, update LCD
 // =========================================================
+#if ENABLE_TEMPERATURE
 void readAndPostTemperature() {
   tempSensor.requestTemperatures();
   float tempC = tempSensor.getTempCByIndex(0);
@@ -446,6 +452,7 @@ void readAndPostTemperature() {
     http.end();
   }
 }
+#endif
 
 // =========================================================
 //  RFID — Log scan to Supabase rfid_events
