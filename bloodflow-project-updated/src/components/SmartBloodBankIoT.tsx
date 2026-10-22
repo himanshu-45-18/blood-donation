@@ -1358,13 +1358,24 @@ export function SmartBloodBankIoT({ hospital }: SmartBloodBankIoTProps) {
                       <tr>
                         <td className="p-2 font-bold" rowSpan={2}>Emergency Push Button</td>
                         <td className="p-2">Terminal 1</td>
-                        <td className="p-2 font-mono text-red-600 font-bold">D0 (GPIO 16)</td>
-                        <td className="p-2">Connect 10kΩ pull-up resistor to 3.3V</td>
+                        <td className="p-2 font-mono text-red-600 font-bold">D2 (GPIO 4)</td>
+                        <td className="p-2">Internal pull-up enabled (no resistor needed)</td>
                       </tr>
                       <tr>
                         <td className="p-2">Terminal 2</td>
                         <td className="p-2 font-mono">GND</td>
                         <td className="p-2">Pressing pulls pin to LOW</td>
+                      </tr>
+                      <tr>
+                        <td className="p-2 font-bold" rowSpan={2}>Warning Buzzer</td>
+                        <td className="p-2">Positive (+)</td>
+                        <td className="p-2 font-mono text-amber-600 font-bold">D1 (GPIO 5)</td>
+                        <td className="p-2">Beeps on RFID scan; sirens on emergency</td>
+                      </tr>
+                      <tr>
+                        <td className="p-2">Negative (-)</td>
+                        <td className="p-2 font-mono">GND</td>
+                        <td className="p-2">Common Ground</td>
                       </tr>
                     </tbody>
                   </table>
