@@ -139,6 +139,7 @@ void setup() {
 
   // LCD Init (uses D1/D2 for I2C automatically)
   Wire.begin(4, 5);  // SDA=D2(GPIO4), SCL=D1(GPIO5)
+  Wire.setClockStretchLimit(1500);
   lcd.init();
   lcd.backlight();
   lcd.createChar(0, bellChar);
@@ -169,25 +170,33 @@ void setup() {
   Serial.println(WIFI_SSID);
   WiFi.mode(WIFI_STA);
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  while (WiFi.status() != WL_CONNECTED) {
+  int wifiAttempts = 0;
+  while (WiFi.status() != WL_CONNECTED && wifiAttempts < 25) {
     delay(400);
     Serial.print('.');
+    wifiAttempts++;
   }
   Serial.println();
-  Serial.print(F("Connected! IP: "));
-  Serial.println(WiFi.localIP());
 
-  lcdShow("WiFi Connected!", WiFi.localIP().toString().c_str());
-  delay(1500);
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.print(F("Connected! IP: "));
+    Serial.println(WiFi.localIP());
+    lcdShow("WiFi Connected!", WiFi.localIP().toString().c_str());
+    delay(1500);
 
-  // Resolve ST001 UUID
-  for (int i = 0; i < 3 && storageUnitId.isEmpty(); i++) {
-    if (i > 0) { delay(2000); }
-    fetchStorageUnitId();
+    // Resolve ST001 UUID
+    for (int i = 0; i < 3 && storageUnitId.isEmpty(); i++) {
+      if (i > 0) { delay(1000); }
+      fetchStorageUnitId();
+    }
+
+    // Initial heartbeat
+    sendHeartbeat(0.0);
+  } else {
+    Serial.println(F("Wi-Fi connection timed out! Running in offline mode..."));
+    lcdShow("WiFi Offline", "Check SSID/Pass");
+    delay(2000);
   }
-
-  // Initial heartbeat
-  sendHeartbeat(0.0);
 
   lcdShowReady(0.0);
   Serial.println(F("\n✓ All systems ready!\n"));
@@ -197,12 +206,14 @@ void setup() {
 //  MAIN LOOP
 // =========================================================
 void loop() {
+  // Non-blocking Wi-Fi reconnect attempt
+  static unsigned long lastWifiCheck = 0;
   if (WiFi.status() != WL_CONNECTED) {
-    Serial.println(F("Wi-Fi lost, reconnecting..."));
-    lcdShow("WiFi Lost!", "Reconnecting...");
-    WiFi.reconnect();
-    delay(3000);
-    return;
+    if (millis() - lastWifiCheck > 15000) {
+      lastWifiCheck = millis();
+      Serial.println(F("Wi-Fi offline, attempting reconnect..."));
+      WiFi.reconnect();
+    }
   }
 
   // ── EMERGENCY BUTTON (D0) ──────────────────────────────
@@ -458,6 +469,10 @@ void readAndPostTemperature() {
 //  RFID — Log scan to Supabase rfid_events
 // =========================================================
 bool postRFIDEvent(const String& uid) {
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println(F("[RFID] Wi-Fi offline — scan displayed on LCD only."));
+    return false;
+  }
   StaticJsonDocument<256> doc;
   doc["rfid_uid"] = uid;
   doc["action"]   = "ENTERED";
@@ -475,6 +490,10 @@ bool postRFIDEvent(const String& uid) {
 //  FIRE EMERGENCY — call Supabase Edge Function
 // =========================================================
 bool sendFireEmergency() {
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println(F("[EMERGENCY] Wi-Fi offline — alert shown on LCD only."));
+    return false;
+  }
   HTTPClient http;
   String url = String("https://") + SUPABASE_HOST +
                "/functions/v1/emergency-call?action=fire_emergency";
@@ -514,6 +533,7 @@ void postAlert(const char* alertType, const char* severity, const String& msg) {
 //  HEARTBEAT — upsert into iot_devices
 // =========================================================
 void sendHeartbeat(float tempC) {
+  if (WiFi.status() != WL_CONNECTED) return;
   HTTPClient http;
   String url = String("https://") + SUPABASE_HOST + "/rest/v1/iot_devices";
   if (!http.begin(wifiClient, url)) return;
