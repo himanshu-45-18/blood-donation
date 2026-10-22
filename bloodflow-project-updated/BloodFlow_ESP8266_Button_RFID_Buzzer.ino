@@ -16,7 +16,7 @@
  *  3. RC522 RFID READER (SPI):
  *     RC522 VCC             → 3V3   (⚠️ 3.3V ONLY — NEVER CONNECT TO 5V!)
  *     RC522 GND             → GND
- *     RC522 RST             → 3V3   (Tied to 3.3V to prevent bootloader hang)
+ *     RC522 RST             → D0 (GPIO 16)
  *     RC522 SDA (SS)        → D4 (GPIO 2)
  *     RC522 SCK             → D5 (GPIO 14)
  *     RC522 MISO            → D6 (GPIO 12)
@@ -52,10 +52,9 @@ const char* DEVICE_ID         = "BLOOD-BANK-ESP8266";
 // =========================================================
 #define BUTTON_PIN    4   // D2 — Emergency Button (INPUT_PULLUP)
 #define BUZZER_PIN    5   // D1 — Warning Buzzer (+)
-#define ONBOARD_LED   2   // D4 — Onboard blue LED
 
-#define RFID_SS_PIN   2   // D4 (GPIO 2) — RC522 SDA/SS
-#define RFID_RST_PIN  255 // Unused / Tied to 3.3V (255 = dummy pin)
+#define RFID_SS_PIN   2   // D4 (GPIO 2) — RC522 SDA (SS)
+#define RFID_RST_PIN  16  // D0 (GPIO 16) — RC522 RST (Real GPIO for reliable wake-up!)
 
 // =========================================================
 //  OBJECTS & TIMING
@@ -87,10 +86,8 @@ void beepRFID() {
 void beepEmergencyAlarm() {
   for (int i = 0; i < 5; i++) {
     digitalWrite(BUZZER_PIN, HIGH);
-    digitalWrite(ONBOARD_LED, LOW);  // LED ON
     delay(150);
     digitalWrite(BUZZER_PIN, LOW);
-    digitalWrite(ONBOARD_LED, HIGH); // LED OFF
     delay(100);
   }
 }
@@ -249,12 +246,9 @@ void setup() {
   Serial.println(F("  BloodFlow — Button + RFID + Buzzer System   "));
   Serial.println(F("=============================================="));
 
-  // Initialize Buzzer & LED
+  // Initialize Buzzer
   pinMode(BUZZER_PIN, OUTPUT);
   digitalWrite(BUZZER_PIN, LOW); // Buzzer OFF
-
-  pinMode(ONBOARD_LED, OUTPUT);
-  digitalWrite(ONBOARD_LED, HIGH); // LED OFF
 
   // Initialize Emergency Button (Internal pull-up)
   pinMode(BUTTON_PIN, INPUT_PULLUP);
@@ -262,8 +256,25 @@ void setup() {
   // Initialize RC522 RFID
   SPI.begin();
   rfid.PCD_Init();
-  delay(50);
-  Serial.println(F("✓ RC522 RFID Reader initialized."));
+  delay(100);
+
+  // Set maximum antenna power (+48dB) for best reading distance
+  rfid.PCD_AntennaOn();
+  rfid.PCD_SetAntennaGain(MFRC522::RxGain_max);
+
+  // Diagnostic check to verify SPI communication
+  byte ver = rfid.PCD_ReadRegister(MFRC522::VersionReg);
+  Serial.printf("[RFID DIAGNOSTIC] Chip Version: 0x%02X\n", ver);
+  if (ver == 0x91 || ver == 0x92) {
+    Serial.println(F("✓ RC522 RFID Reader: HARDWARE DETECTED & READY!"));
+  } else if (ver == 0x00 || ver == 0xFF) {
+    Serial.println(F("❌ ERROR: RC522 NOT DETECTED over SPI!"));
+    Serial.println(F("   -> Check if MOSI (D7) and MISO (D6) are swapped"));
+    Serial.println(F("   -> Check if RST is plugged into D0 (GPIO 16)"));
+    Serial.println(F("   -> Check if VCC is connected to 3.3V (NOT 5V)"));
+  } else {
+    Serial.printf("✓ RC522 clone detected (0x%02X). Ready to scan!\n", ver);
+  }
 
   // SSL (ignore cert)
   wifiClient.setInsecure();
@@ -360,3 +371,4 @@ void loop() {
     sendHeartbeat();
   }
 }
+
